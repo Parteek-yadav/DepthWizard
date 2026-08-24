@@ -1,0 +1,93 @@
+# backend/app/main.py
+import logging
+from pathlib import Path
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+
+
+from backend.app.config import APP_TITLE, APP_DESCRIPTION, APP_VERSION, OUTPUTS_DIR, TEMP_DIR
+from backend.app.api.routes_upload import router as upload_router
+from backend.app.api.routes_process import router as process_router
+from backend.app.api.routes_analysis import router as analysis_router
+from backend.app.api.routes_demo import router as demo_router
+from backend.app.api.routes_geo import router as geo_router
+from backend.app.api.routes_img2d3d import router as img2d3d_router
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s [%(levelname)s] %(name)s: %(message)s'
+)
+logger = logging.getLogger("depthwizard")
+
+app = FastAPI(
+    title=APP_TITLE,
+    description=APP_DESCRIPTION,
+    version=APP_VERSION
+)
+
+# CORS middleware for friendly local hostname & cross-origin connection
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "*",
+        "http://depthwizard.localhost:8000",
+        "http://depthwizard.localhost",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000",
+        "http://localhost:5173",
+        "http://depthwizard.localhost:5173"
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Mount outputs directory for static texture and preview serving
+app.mount("/outputs", StaticFiles(directory=str(OUTPUTS_DIR)), name="outputs")
+
+# Register API Routers
+app.include_router(upload_router)
+app.include_router(process_router)
+app.include_router(analysis_router)
+app.include_router(demo_router)
+app.include_router(geo_router)
+app.include_router(img2d3d_router)
+
+
+@app.get("/api/health")
+async def health_check():
+    """Backend service health and subsystem status check."""
+    return {
+        "status": "healthy",
+        "service": "DepthWizard API",
+        "version": APP_VERSION,
+        "isro_problem": "SIH26175",
+        "local_url": "http://depthwizard.localhost:8000",
+        "capabilities": {
+            "monocular_depth": True,
+            "geotiff_processing": True,
+            "dem_alignment": True,
+            "huber_calibration": True,
+            "mesh_generation": True,
+            "global_map_discovery": True,
+            "3d_buildings": True
+        }
+    }
+
+# Mount frontend static app at root
+static_dir = Path(__file__).parent / "static"
+if static_dir.exists():
+    app.mount("/", StaticFiles(directory=str(static_dir), html=True), name="static")
+
+if __name__ == "__main__":
+    import uvicorn
+    print("\n=============================================================")
+    print("  🚀 DEPTHWIZARD SERVER RUNNING")
+    print("  🌍 Open in Browser: http://depthwizard.localhost:8000")
+    print("  🔗 Alternative URL: http://127.0.0.1:8000")
+    print("=============================================================\n")
+    uvicorn.run("backend.app.main:app", host="0.0.0.0", port=8000, reload=True)
+
+

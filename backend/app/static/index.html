@@ -1,0 +1,1305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DepthWizard — ISRO SIH26175 Single-View Height Estimation & AI 3D Reconstruction</title>
+  
+  <!-- Tailwind CSS & Fonts -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+  <!-- Three.js, Leaflet, & Lucide Icons -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            space: {
+              950: '#060913',
+              900: '#0B1120',
+              850: '#0F172A',
+              800: '#1E293B',
+              700: '#334155',
+              600: '#475569',
+            },
+            isro: {
+              orange: '#FF6B00',
+              blue: '#0284C7',
+              sky: '#38BDF8',
+              gold: '#F59E0B',
+              emerald: '#10B981',
+              purple: '#8B5CF6'
+            }
+          },
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace']
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    body {
+      background-color: #060913;
+      color: #f1f5f9;
+      margin: 0;
+      overflow: hidden;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: #0b1120; }
+    ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #334155; }
+    .leaflet-container { background: #060913 !important; }
+    .leaflet-tile { filter: brightness(0.92) contrast(1.06); }
+    .leaflet-crosshair { cursor: crosshair !important; }
+    /* Ensure search dropdown renders on top of all Leaflet layers */
+    #searchDropdown {
+      z-index: 9999 !important;
+      position: absolute !important;
+    }
+  </style>
+</head>
+<body class="h-screen w-screen flex flex-col font-sans">
+
+  <!-- 1. TOP HEADER -->
+  <header class="h-12 border-b border-space-800 bg-space-900/95 backdrop-blur-md px-4 flex items-center justify-between z-30 shrink-0">
+    <div class="flex items-center space-x-3">
+      <div class="w-8 h-8 rounded-lg bg-gradient-to-tr from-isro-orange to-isro-sky flex items-center justify-center shadow-lg shadow-isro-blue/20">
+        <i data-lucide="layers" class="w-4 h-4 text-white"></i>
+      </div>
+      <div>
+        <div class="flex items-center space-x-2">
+          <span class="font-bold text-sm tracking-tight text-white">DepthWizard</span>
+          <span class="text-[9px] uppercase font-bold tracking-wider px-1.5 py-0.2 rounded bg-orange-950/80 text-orange-400 border border-orange-800/60">
+            ISRO SIH26175
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Active Pipeline Mode & AI Supervisor Badge -->
+    <div class="flex items-center space-x-2" id="headerModeBadge">
+      <div class="px-2.5 py-0.5 rounded-full text-xs font-semibold flex items-center space-x-1.5 border bg-emerald-950/70 text-emerald-300 border-emerald-700/60">
+        <i data-lucide="globe" class="w-3 h-3"></i>
+        <span id="modeLabel">Mode 2: Georeferenced (Calibrated Metric DSM)</span>
+        <span id="crsLabel" class="text-[9px] opacity-75 font-mono px-1 bg-black/40 rounded">EPSG:32643</span>
+      </div>
+
+      <div class="px-2 py-0.5 rounded-full text-[10px] font-semibold flex items-center space-x-1 border bg-purple-950/70 text-purple-300 border-purple-700/60" id="badgeAiSupervisor" title="AI Reconstruction Supervisor (OpenRouter Free Router)">
+        <i data-lucide="cpu" class="w-3 h-3 text-purple-400 animate-pulse"></i>
+        <span id="aiSupervisorTag">AI Supervisor Active</span>
+      </div>
+
+      <div class="px-2 py-0.5 rounded-full text-[10px] font-bold flex items-center space-x-1 border bg-sky-950/70 text-sky-300 border-sky-700/60" id="badgeConfidence">
+        <i data-lucide="shield-check" class="w-3 h-3 text-emerald-400"></i>
+        <span id="confidenceTag">CONFIDENCE: HIGH</span>
+      </div>
+    </div>
+
+    <!-- Global Top Actions -->
+    <div class="flex items-center space-x-2">
+      <button id="btnInspectorModal" title="Reconstruction Inspector" class="px-2.5 py-1 rounded text-xs font-medium bg-space-800 hover:bg-space-700 text-sky-300 border border-sky-700/50 transition-all flex items-center space-x-1 shadow">
+        <i data-lucide="activity" class="w-3.5 h-3.5 text-sky-400"></i>
+        <span>Inspector</span>
+      </button>
+
+      <button id="btnImg2D3DModal" title="Convert Ordinary 2D Image to 3D" class="px-2.5 py-1 rounded text-xs font-medium bg-gradient-to-r from-purple-900/60 to-indigo-900/60 hover:from-purple-800 hover:to-indigo-800 text-purple-200 border border-purple-700/60 transition-all flex items-center space-x-1 shadow">
+        <i data-lucide="image" class="w-3.5 h-3.5 text-purple-400"></i>
+        <span>2D &rarr; 3D</span>
+      </button>
+
+      <button id="btnDemoModal" title="Open Curated Datasets" class="px-2.5 py-1 rounded text-xs font-medium bg-space-800 hover:bg-space-700 text-slate-200 border border-space-700 transition-all flex items-center space-x-1">
+        <i data-lucide="sparkles" class="w-3.5 h-3.5 text-isro-sky"></i>
+        <span>Datasets</span>
+      </button>
+
+      <button id="btnUploadModal" title="Upload Custom Imagery" class="px-2.5 py-1 rounded text-xs font-semibold bg-isro-blue hover:bg-sky-600 text-white shadow transition-all flex items-center space-x-1">
+        <i data-lucide="upload-cloud" class="w-3.5 h-3.5"></i>
+        <span>Upload</span>
+      </button>
+
+      <button id="btnHelpModal" title="Documentation & Guide" class="p-1.5 rounded bg-space-800 hover:bg-space-700 text-slate-400 hover:text-white border border-space-700 transition-all">
+        <i data-lucide="help-circle" class="w-3.5 h-3.5"></i>
+      </button>
+
+      <button id="btnToggleSidebar" title="Toggle Sidebar" class="p-1.5 rounded bg-space-800 hover:bg-space-700 text-slate-400 hover:text-white border border-space-700 transition-all">
+        <i data-lucide="panel-right" class="w-3.5 h-3.5"></i>
+      </button>
+
+      <button id="btnFullscreen" title="Toggle Fullscreen" class="p-1.5 rounded bg-space-800 hover:bg-space-700 text-slate-400 hover:text-white border border-space-700 transition-all">
+        <i data-lucide="maximize" class="w-3.5 h-3.5" id="fsIcon"></i>
+      </button>
+    </div>
+  </header>
+
+  <!-- 2. MAIN WORKSPACE (85-90% DOMINANT 3D VIEWPORT) -->
+  <div class="flex-1 flex relative overflow-hidden">
+    
+    <!-- Left / Center Dominant Viewport Container -->
+    <div class="flex-1 flex flex-col bg-space-950 relative overflow-hidden">
+      
+      <!-- Primary View Navigation Tabs -->
+      <div class="h-9 bg-space-900/90 border-b border-space-800 px-4 flex items-center justify-between text-xs shrink-0 z-20">
+        <div class="flex items-center space-x-1" id="viewTabs">
+          <button data-view="globe" class="tab-btn px-2.5 py-1 rounded font-medium flex items-center space-x-1.5 text-slate-400 hover:text-white">
+            <i data-lucide="globe" class="w-3.5 h-3.5 text-sky-400"></i><span>Global Map & Area Discovery</span>
+          </button>
+          <button data-view="3d" class="tab-btn active px-2.5 py-1 rounded font-medium flex items-center space-x-1.5 bg-isro-blue text-white shadow">
+            <i data-lucide="box" class="w-3.5 h-3.5"></i><span>3D Continuous Terrain</span>
+          </button>
+          <button data-view="rgb" class="tab-btn px-2.5 py-1 rounded font-medium flex items-center space-x-1.5 text-slate-400 hover:text-white">
+            <i data-lucide="eye" class="w-3.5 h-3.5"></i><span>Optical RGB</span>
+          </button>
+          <button data-view="depth" class="tab-btn px-2.5 py-1 rounded font-medium flex items-center space-x-1.5 text-slate-400 hover:text-white">
+            <i data-lucide="layers" class="w-3.5 h-3.5"></i><span>Depth Map</span>
+          </button>
+          <button data-view="dsm" class="tab-btn px-2.5 py-1 rounded font-medium flex items-center space-x-1.5 text-slate-400 hover:text-white">
+            <i data-lucide="mountain" class="w-3.5 h-3.5"></i><span>DSM</span>
+          </button>
+          <button data-view="split" class="tab-btn px-2.5 py-1 rounded font-medium flex items-center space-x-1.5 text-slate-400 hover:text-white">
+            <i data-lucide="split-square-vertical" class="w-3.5 h-3.5"></i><span>4-Pane</span>
+          </button>
+        </div>
+
+        <div class="flex items-center space-x-2 text-[11px] text-slate-400 font-mono">
+          <span id="fpsTag" class="text-emerald-400 font-bold">60 FPS</span>
+          <span>|</span>
+          <span id="qualityTag" class="text-sky-300">AUTO Quality</span>
+          <span>|</span>
+          <span id="vertTag">Vertices: 16,384</span>
+        </div>
+      </div>
+
+      <!-- Viewport Canvas Stack -->
+      <div class="flex-1 relative overflow-hidden bg-space-950" id="canvasContainer">
+        
+        <!-- A. 3D WebGL Canvas Element -->
+        <div id="webglTarget" class="w-full h-full cursor-crosshair"></div>
+
+        <!-- Drone Flight Mode HUD -->
+        <div id="flightHud" class="hidden absolute top-4 left-1/2 -translate-x-1/2 z-10 bg-space-900/90 backdrop-blur-md border border-sky-500/50 rounded-xl px-4 py-2 text-xs shadow-2xl flex items-center space-x-5 select-none font-mono">
+          <div class="flex items-center space-x-1.5 text-sky-400 font-bold">
+            <i data-lucide="plane" class="w-4 h-4 animate-pulse"></i>
+            <span>FLIGHT HUD</span>
+          </div>
+          <div><span class="text-slate-400 text-[10px]">SPEED:</span> <b id="hudSpeed" class="text-white">25.0 m/s</b></div>
+          <div><span class="text-slate-400 text-[10px]">ALTITUDE:</span> <b id="hudAlt" class="text-emerald-400">120 m</b></div>
+          <div><span class="text-slate-400 text-[10px]">HEADING:</span> <b id="hudHeading" class="text-amber-400">045°</b></div>
+          <div class="text-[10px] text-slate-400 bg-space-950 px-2 py-0.5 rounded border border-space-800">WASD: Fly &bull; Mouse: Look &bull; Wheel: Speed</div>
+        </div>
+
+        <!-- B. Global Map & Area Selection Container -->
+        <div id="globalMapOverlay" class="hidden absolute inset-0 z-10 flex flex-col bg-space-950">
+          
+          <!-- Map Search & Tool Bar (High Z-Index Header) -->
+          <div class="h-14 bg-space-900/95 border-b border-space-800 px-4 flex items-center justify-between z-[2000] shrink-0 relative">
+            
+            <div class="flex items-center space-x-3 flex-1 max-w-xl relative">
+              <!-- Search Mode Toggle -->
+              <div class="flex items-center bg-space-950 p-0.5 rounded border border-space-800 shrink-0 text-xs">
+                <button id="btnSearchModePlace" class="px-2 py-1 rounded font-medium bg-isro-blue text-white shadow text-[11px]">Place</button>
+                <button id="btnSearchModeCoord" class="px-2 py-1 rounded font-medium text-slate-400 hover:text-white text-[11px]">Coordinates</button>
+              </div>
+
+              <!-- Input Container A: Place Name Search with Layer-Safe Dropdown -->
+              <div id="placeSearchContainer" class="relative flex-1">
+                <div class="relative">
+                  <input id="mapSearchInput" type="text" placeholder="Search any landmark, airport, station, fort, city (e.g. Taj Mahal, Ajmer Station, Delhi Airport)..." class="w-full bg-space-950 border border-space-800 rounded px-3 py-1.5 pl-8 pr-7 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-isro-sky" />
+                  <i data-lucide="search" class="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5"></i>
+                  <button id="btnClearSearch" class="hidden absolute right-2 top-2 text-slate-400 hover:text-white"><i data-lucide="x" class="w-3.5 h-3.5"></i></button>
+                </div>
+
+                <!-- Layering Fix: Explicit z-[9999] dropdown positioned above map -->
+                <div id="searchDropdown" class="hidden absolute left-0 right-0 top-11 bg-space-900 border border-space-700 rounded-lg shadow-2xl overflow-hidden z-[9999] max-h-72 overflow-y-auto"></div>
+              </div>
+
+              <!-- Input Container B: Coordinate Search -->
+              <div id="coordSearchContainer" class="hidden flex-1 flex items-center space-x-2">
+                <input id="coordLatInput" type="number" step="any" placeholder="Lat (-90 to 90)" class="w-1/2 bg-space-950 border border-space-800 rounded px-2 py-1 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-isro-sky font-mono" />
+                <input id="coordLonInput" type="number" step="any" placeholder="Lon (-180 to 180)" class="w-1/2 bg-space-950 border border-space-800 rounded px-2 py-1 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-isro-sky font-mono" />
+                <button id="btnGoCoord" class="px-2.5 py-1 rounded bg-isro-blue hover:bg-sky-600 text-white text-xs font-semibold shrink-0">Go</button>
+              </div>
+            </div>
+
+            <!-- Paint-Style Area Selection Controls -->
+            <div class="flex items-center space-x-2 text-xs">
+              <button id="btnPaintSelectToggle" class="px-3 py-1.5 rounded bg-space-800 hover:bg-space-700 text-amber-300 border border-amber-600/50 font-medium flex items-center space-x-1.5 transition-all shadow">
+                <i data-lucide="crop" class="w-3.5 h-3.5 text-amber-400"></i>
+                <span id="paintSelectLabel">Select Area (Drag Box)</span>
+              </button>
+
+              <button id="btnClearSelection" class="px-2.5 py-1.5 rounded bg-space-950 hover:bg-space-800 text-slate-400 hover:text-white border border-space-800">Clear</button>
+
+              <button id="btnConfirmAnalyze" class="px-4 py-1.5 rounded bg-emerald-600 hover:bg-emerald-500 text-white font-semibold flex items-center space-x-1.5 shadow transition-all">
+                <i data-lucide="zap" class="w-3.5 h-3.5 text-emerald-200"></i>
+                <span>Render Selected Area</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Leaflet Interactive Map with Deep Zoom (MaxZoom 19) -->
+          <div id="leafletMap" class="flex-1 w-full h-full z-10"></div>
+
+          <!-- Selected Area Floating Telemetry Card -->
+          <div id="selectedAreaCard" class="hidden absolute bottom-4 left-4 z-[1000] bg-space-900/95 backdrop-blur-md border border-space-800 rounded-xl p-3 text-xs shadow-2xl w-80 space-y-1.5 select-none">
+            <div class="flex items-center justify-between border-b border-space-800 pb-1">
+              <div class="flex items-center space-x-1.5 text-isro-sky font-bold">
+                <i data-lucide="map-pin" class="w-3.5 h-3.5 text-emerald-400"></i>
+                <span id="selAreaName" class="truncate max-w-[160px]">Jaipur City Palace</span>
+              </div>
+              <span class="text-[10px] font-mono px-1.5 py-0.2 bg-emerald-950 text-emerald-300 rounded border border-emerald-800" id="selAreaDimensions">1.0 km &times; 1.0 km</span>
+            </div>
+            <div class="grid grid-cols-2 gap-1 text-[10px] font-mono">
+              <div class="p-1 bg-space-950 rounded border border-space-800">
+                <div class="text-[8px] text-slate-400">Bounds</div>
+                <div id="selAreaCoords" class="text-slate-200 truncate">26.92°N, 75.82°E</div>
+              </div>
+              <div class="p-1 bg-space-950 rounded border border-space-800">
+                <div class="text-[8px] text-slate-400">Approx Area</div>
+                <div id="selAreaKm2" class="text-emerald-300 font-bold">1.00 km²</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- C. 2D Overlays -->
+        <div id="view2dOverlay" class="hidden absolute inset-0 bg-black flex items-center justify-center p-4">
+          <img id="view2dImg" src="" class="max-w-full max-h-full object-contain rounded shadow-2xl border border-space-800" />
+        </div>
+
+        <!-- D. Split View Overlay -->
+        <div id="viewSplitOverlay" class="hidden absolute inset-0 grid grid-cols-2 grid-rows-2 gap-1 p-1 bg-space-900">
+          <div class="relative bg-black flex flex-col rounded border border-space-800 overflow-hidden">
+            <span class="absolute top-2 left-2 z-10 text-[9px] font-bold px-1.5 py-0.5 rounded bg-black/70 text-slate-200 border border-space-700">1. Optical RGB</span>
+            <img id="splitRgb" class="w-full h-full object-contain" />
+          </div>
+          <div class="relative bg-black flex flex-col rounded border border-space-800 overflow-hidden">
+            <span class="absolute top-2 left-2 z-10 text-[9px] font-bold px-1.5 py-0.5 rounded bg-black/70 text-sky-400 border border-space-700">2. Relative Depth</span>
+            <img id="splitDepth" class="w-full h-full object-contain" />
+          </div>
+          <div class="relative bg-black flex flex-col rounded border border-space-800 overflow-hidden">
+            <span class="absolute top-2 left-2 z-10 text-[9px] font-bold px-1.5 py-0.5 rounded bg-black/70 text-emerald-400 border border-space-700">3. Calibrated DSM</span>
+            <img id="splitDsm" class="w-full h-full object-contain" />
+          </div>
+          <div class="relative bg-space-950 flex flex-col rounded border border-space-800 overflow-hidden flex items-center justify-center text-xs text-slate-400">
+            <span class="absolute top-2 left-2 z-10 text-[9px] font-bold px-1.5 py-0.5 rounded bg-black/70 text-amber-400 border border-space-700">4. 3D Flythrough</span>
+            <div class="text-center space-y-1">
+              <i data-lucide="box" class="w-6 h-6 text-isro-sky mx-auto animate-pulse"></i>
+              <p>Active in 3D Viewport</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- 3D Overlay Floating Compact Controls -->
+        <div id="floatingControls" class="absolute top-3 left-3 z-10 bg-space-900/90 backdrop-blur-md border border-space-800 rounded-lg p-2.5 shadow-2xl flex flex-col space-y-2 text-xs w-60 select-none">
+          <div>
+            <div class="grid grid-cols-2 gap-1 bg-space-950 p-0.5 rounded border border-space-800 text-[11px]">
+              <button id="btnCamOrbit" class="py-1 rounded font-medium bg-isro-blue text-white shadow">Orbit</button>
+              <button id="btnCamFly" class="py-1 rounded font-medium text-slate-400 hover:text-white">Drone Fly</button>
+            </div>
+          </div>
+
+          <div>
+            <div class="grid grid-cols-4 gap-1 bg-space-950 p-0.5 rounded border border-space-800 text-[10px]">
+              <button id="btnMatTexture" class="py-0.5 rounded font-medium bg-space-700 text-white">Texture</button>
+              <button id="btnMatColormap" class="py-0.5 rounded font-medium text-slate-400 hover:text-white">DSM</button>
+              <button id="btnMatClay" class="py-0.5 rounded font-medium text-slate-400 hover:text-white">Clay</button>
+              <button id="btnMatWireframe" class="py-0.5 rounded font-medium text-slate-400 hover:text-white">Wire</button>
+            </div>
+          </div>
+
+          <!-- Vertical Exaggeration Slider -->
+          <div>
+            <div class="flex justify-between items-center mb-0.5 text-[10px]">
+              <span class="text-slate-300 font-medium">Height Exaggeration</span>
+              <span id="exaggVal" class="font-mono font-bold text-isro-sky">1.0x (1:1 Metric)</span>
+            </div>
+            <input id="sliderExagg" type="range" min="0.2" max="3.0" step="0.1" value="1.0" class="w-full accent-isro-sky cursor-pointer h-1.5 bg-space-800 rounded-lg" />
+          </div>
+
+          <!-- Sun Lighting Slider -->
+          <div>
+            <div class="flex justify-between items-center mb-0.5 text-[10px]">
+              <span class="text-slate-300 font-medium">Sun Altitude</span>
+              <span id="sunVal" class="font-mono text-slate-400">45°</span>
+            </div>
+            <input id="sliderSun" type="range" min="10" max="85" step="5" value="45" class="w-full accent-amber-400 cursor-pointer h-1.5 bg-space-800 rounded-lg" />
+          </div>
+
+          <button id="btnFitReset" class="w-full py-1 rounded bg-space-800 hover:bg-space-700 text-slate-200 border border-space-700 font-medium text-[10px] transition-all flex items-center justify-center space-x-1">
+            <i data-lucide="compass" class="w-3 h-3 text-slate-400"></i><span>Frame & Reset Camera</span>
+          </button>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Right: Collapsible Geospatial Analytics & Calibration Sidebar -->
+    <aside id="sidebarAnalytics" class="w-72 bg-space-950/95 border-l border-space-800 p-3 flex flex-col space-y-2.5 overflow-y-auto z-20 shrink-0 select-none text-slate-200 transition-all">
+      
+      <div class="flex items-center justify-between border-b border-space-800 pb-1.5">
+        <div class="flex items-center space-x-1.5 font-bold text-xs text-white">
+          <i data-lucide="bar-chart-2" class="w-3.5 h-3.5 text-isro-sky"></i>
+          <span>Geospatial Analytics</span>
+        </div>
+      </div>
+
+      <!-- Elevation Bounds Card -->
+      <div class="p-2 rounded bg-space-900 border border-space-800 text-xs shadow space-y-1">
+        <div class="flex items-center space-x-1 text-slate-300 font-semibold text-[11px]">
+          <i data-lucide="mountain" class="w-3 h-3 text-emerald-400"></i><span>Elevation Bounds</span>
+        </div>
+        <div class="grid grid-cols-3 gap-1 text-center">
+          <div class="p-1 rounded bg-space-950 border border-space-800">
+            <div class="text-[8px] text-slate-400">Min</div>
+            <div id="statMin" class="font-mono font-bold text-[10px] text-sky-400">430 m</div>
+          </div>
+          <div class="p-1 rounded bg-space-950 border border-space-800">
+            <div class="text-[8px] text-slate-400">Mean</div>
+            <div id="statMean" class="font-mono font-bold text-[10px] text-slate-200">465 m</div>
+          </div>
+          <div class="p-1 rounded bg-space-950 border border-space-800">
+            <div class="text-[8px] text-slate-400">Max</div>
+            <div id="statMax" class="font-mono font-bold text-[10px] text-emerald-400">495 m</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Huber Calibration Card -->
+      <div id="calibrationCard" class="p-2 rounded bg-space-900/90 border border-emerald-800/40 text-xs shadow space-y-1">
+        <div class="flex items-center justify-between border-b border-space-800 pb-0.5">
+          <div class="flex items-center space-x-1 text-emerald-400 font-semibold text-[11px]">
+            <i data-lucide="check-circle" class="w-3 h-3"></i><span>Huber Fit</span>
+          </div>
+          <span class="text-[8px] font-mono px-1 rounded bg-emerald-950 border border-emerald-700 text-emerald-300">M-Est</span>
+        </div>
+        <div class="grid grid-cols-2 gap-1 font-mono text-[9px]">
+          <div class="p-0.5 bg-space-950 rounded border border-space-800">MAE: <b id="calibMae" class="text-emerald-300">2.14 m</b></div>
+          <div class="p-0.5 bg-space-950 rounded border border-space-800">RMSE: <b id="calibRmse" class="text-emerald-300">3.21 m</b></div>
+          <div class="p-0.5 bg-space-950 rounded border border-space-800">Pearson r: <b id="calibR" class="text-isro-sky">0.965</b></div>
+          <div class="p-0.5 bg-space-950 rounded border border-space-800">R² Score: <b id="calibR2" class="text-isro-sky">0.932</b></div>
+        </div>
+      </div>
+
+      <!-- 2-Point Height Difference (ΔZ) & Slope Measurement -->
+      <div class="p-2.5 rounded bg-space-900 border border-space-800 text-xs shadow space-y-1.5">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center space-x-1 text-slate-300 font-semibold text-[11px]">
+            <i data-lucide="ruler" class="w-3 h-3 text-amber-400"></i><span>Height Difference (ΔZ)</span>
+          </div>
+        </div>
+
+        <div class="space-y-1 text-[10px]">
+          <div class="flex justify-between">
+            <span class="text-slate-400">Base Pt:</span>
+            <span id="valPtA" class="font-mono text-slate-200">430 m</span>
+          </div>
+          <input id="sliderPtA" type="range" min="400" max="600" step="5" value="430" class="w-full accent-isro-sky cursor-pointer h-1 bg-space-800 rounded" />
+
+          <div class="flex justify-between">
+            <span class="text-slate-400">Summit Pt:</span>
+            <span id="valPtB" class="font-mono text-slate-200">495 m</span>
+          </div>
+          <input id="sliderPtB" type="range" min="400" max="600" step="5" value="495" class="w-full accent-emerald-400 cursor-pointer h-1 bg-space-800 rounded" />
+        </div>
+
+        <div class="grid grid-cols-2 gap-1 pt-1 border-t border-space-800 font-mono text-center">
+          <div class="p-1 rounded bg-space-950 border border-space-800">
+            <div class="text-[8px] text-slate-400">Diff (ΔZ)</div>
+            <div id="resDz" class="font-bold text-[11px] text-amber-400">65.0 m</div>
+          </div>
+          <div class="p-1 rounded bg-space-950 border border-space-800">
+            <div class="text-[8px] text-slate-400">Slope Angle (θ)</div>
+            <div id="resSlope" class="font-bold text-[11px] text-sky-400">23.4°</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Hypsometric Distribution Histogram -->
+      <div class="p-2.5 rounded bg-space-900 border border-space-800 text-xs shadow space-y-1">
+        <div class="text-slate-300 font-semibold text-[11px]">Hypsometric Elevation PDF</div>
+        <div id="histBars" class="h-12 flex items-end space-x-0.5 px-0.5 bg-space-950 rounded border border-space-800"></div>
+      </div>
+
+      <!-- Geospatial & 3D Exports -->
+      <div class="p-2 rounded bg-space-900 border border-space-800 text-xs flex flex-col space-y-1">
+        <div class="text-[10px] font-semibold text-slate-300">Geospatial Exports</div>
+        <a id="btnExportTif" href="#" download="dsm_metric.tif" class="py-1 px-2 rounded bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-700/60 text-emerald-300 font-medium flex items-center justify-between text-[11px]">
+          <span>GeoTIFF Metric DSM</span>
+          <span class="text-[8px] font-mono opacity-80">.TIF</span>
+        </a>
+        <a id="btnExportObj" href="#" download="terrain_mesh.obj" class="py-1 px-2 rounded bg-space-800 hover:bg-space-700 border border-space-700 text-slate-200 font-medium flex items-center justify-between text-[11px]">
+          <span>3D Continuous Mesh</span>
+          <span class="text-[8px] font-mono opacity-80">.OBJ</span>
+        </a>
+      </div>
+    </aside>
+  </div>
+
+  <!-- 3. MODALS -->
+  <!-- A. Reconstruction Inspector Modal -->
+  <div id="modalInspector" class="hidden fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-space-900 border border-sky-800/60 rounded-xl max-w-2xl w-full shadow-2xl p-4 text-slate-200 space-y-3 font-mono">
+      <div class="flex justify-between items-center border-b border-space-800 pb-1.5 font-sans">
+        <div class="flex items-center space-x-2">
+          <i data-lucide="activity" class="w-4 h-4 text-sky-400"></i>
+          <h2 class="font-bold text-sm text-white">Reconstruction Inspector & Provenance</h2>
+        </div>
+        <button id="btnCloseInspector" class="text-slate-400 hover:text-white"><i data-lucide="x" class="w-4 h-4"></i></button>
+      </div>
+
+      <div class="grid grid-cols-2 gap-3 text-xs">
+        <div class="p-2.5 rounded bg-space-950 border border-space-800 space-y-1.5">
+          <div class="text-sky-400 font-bold font-sans">Geospatial Telemetry</div>
+          <div>Location: <span id="inspLoc" class="text-white">Jaipur</span></div>
+          <div>Projected CRS: <span id="inspCrs" class="text-emerald-400">EPSG:32643</span></div>
+          <div>Dimensions: <span id="inspDim" class="text-amber-400">1.2 km × 1.1 km</span></div>
+          <div>Approx Area: <span id="inspArea" class="text-white">1.32 km²</span></div>
+          <div>OSM Building Polygons: <span id="inspBldgs" class="text-sky-300">3 Polygons</span></div>
+          <div>Continuous Mesh Verts: <span id="inspVerts" class="text-white">16,384</span></div>
+        </div>
+
+        <div class="p-2.5 rounded bg-space-950 border border-space-800 space-y-1.5">
+          <div class="text-purple-400 font-bold font-sans">AI Supervisor Analysis</div>
+          <div>Model Router: <span class="text-white">openrouter/free</span></div>
+          <div>Data Confidence: <span id="inspConf" class="text-emerald-400 font-bold">HIGH</span></div>
+          <div>Terrain Complexity: <span id="inspComp" class="text-amber-300">0.42 / 1.0</span></div>
+          <div>Recommended LOD: <span id="inspLod" class="text-sky-300">HIGH</span></div>
+          <div>Building Style: <span class="text-white">Polygonal Extruded</span></div>
+          <div>Ground Plane: <span class="text-emerald-400">Continuous Surface (No Floor)</span></div>
+        </div>
+      </div>
+
+      <div class="p-2.5 rounded bg-space-950 border border-space-800 text-[11px] space-y-1">
+        <div class="text-slate-300 font-bold font-sans">Data Provenance</div>
+        <div class="text-slate-400">&bull; Terrain: <span class="text-slate-200">NASA SRTM GL1 30m / Copernicus DEM COP30</span></div>
+        <div class="text-slate-400">&bull; Imagery: <span class="text-slate-200">Esri World Imagery & OpenStreetMap</span></div>
+        <div class="text-slate-400">&bull; Buildings: <span class="text-slate-200">OpenStreetMap Overpass API (Vector Footprints)</span></div>
+        <div class="text-slate-400">&bull; Depth Backbone: <span class="text-slate-200">Depth Anything V2 (ViT-Small)</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- B. 2D Photo to 3D Modal -->
+  <div id="modalImg2D3D" class="hidden fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-space-900 border border-purple-800/60 rounded-xl max-w-md w-full shadow-2xl p-4 text-slate-200 space-y-3">
+      <div class="flex justify-between items-center border-b border-space-800 pb-1.5">
+        <h2 class="font-bold text-sm text-white">Convert Any 2D Image to 3D</h2>
+        <button id="btnCloseImg2D3D" class="text-slate-400 hover:text-white"><i data-lucide="x" class="w-4 h-4"></i></button>
+      </div>
+      <div>
+        <label class="block text-[11px] font-semibold text-slate-300 mb-1">Select Photo (PNG / JPG)</label>
+        <input type="file" id="inputPhoto2D" accept=".png,.jpg,.jpeg,.webp" class="w-full bg-space-950 border border-space-800 rounded p-1.5 text-xs text-slate-300" />
+      </div>
+      <div class="grid grid-cols-2 gap-2">
+        <div>
+          <label class="block text-[10px] text-slate-300">Depth Strength: <b id="valDepthStrength" class="text-purple-400">1.2x</b></label>
+          <input id="sliderDepthStrength" type="range" min="0.2" max="3.0" step="0.1" value="1.2" class="w-full accent-purple-400 h-1 bg-space-800 rounded" />
+        </div>
+        <div>
+          <label class="block text-[10px] text-slate-300">Resolution</label>
+          <select id="selectMeshRes2D" class="w-full bg-space-950 border border-space-800 rounded p-1 text-[11px] text-slate-200">
+            <option value="64">64 × 64</option>
+            <option value="128" selected>128 × 128</option>
+            <option value="256">256 × 256</option>
+          </select>
+        </div>
+      </div>
+      <button id="btnConvert2DTo3D" class="w-full py-1.5 bg-purple-600 hover:bg-purple-500 text-white font-semibold rounded text-xs">Generate 3D Model</button>
+    </div>
+  </div>
+
+  <!-- C. Demo Modal -->
+  <div id="modalDemo" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-space-900 border border-space-800 rounded-xl max-w-xl w-full shadow-2xl p-4 text-slate-200 space-y-3">
+      <div class="flex justify-between items-center border-b border-space-800 pb-1.5">
+        <h2 class="font-bold text-sm text-white">Curated Datasets</h2>
+        <button id="btnCloseDemo" class="text-slate-400 hover:text-white"><i data-lucide="x" class="w-4 h-4"></i></button>
+      </div>
+      <div class="space-y-2 max-h-80 overflow-y-auto" id="demoListContainer"></div>
+    </div>
+  </div>
+
+  <!-- D. Custom Upload Modal -->
+  <div id="modalUpload" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-space-900 border border-space-800 rounded-xl max-w-md w-full shadow-2xl p-4 text-slate-200 space-y-3">
+      <div class="flex justify-between items-center border-b border-space-800 pb-1.5">
+        <h2 class="font-bold text-sm text-white">Upload Satellite Raster</h2>
+        <button id="btnCloseUpload" class="text-slate-400 hover:text-white"><i data-lucide="x" class="w-4 h-4"></i></button>
+      </div>
+      <div>
+        <label class="block text-[11px] font-semibold text-slate-300 mb-1">Optical Raster (GeoTIFF / PNG / JPG)</label>
+        <input type="file" id="inputFileImage" accept=".tif,.tiff,.png,.jpg,.jpeg" class="w-full bg-space-950 border border-space-800 rounded p-1.5 text-xs text-slate-300" />
+      </div>
+      <div>
+        <label class="block text-[11px] font-semibold text-slate-300 mb-1">Reference DEM (Optional for Calibration)</label>
+        <input type="file" id="inputFileDem" accept=".tif,.tiff" class="w-full bg-space-950 border border-space-800 rounded p-1.5 text-xs text-slate-300" />
+      </div>
+      <button id="btnSubmitUpload" class="w-full py-1.5 bg-isro-blue hover:bg-sky-600 text-white font-semibold rounded text-xs">Process</button>
+    </div>
+  </div>
+
+  <!-- E. Help Modal -->
+  <div id="modalHelp" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-space-900 border border-space-800 rounded-xl max-w-lg w-full shadow-2xl p-4 text-slate-200 space-y-3">
+      <div class="flex justify-between items-center border-b border-space-800 pb-1.5">
+        <h2 class="font-bold text-sm text-white">DepthWizard Guide</h2>
+        <button id="btnCloseHelp" class="text-slate-400 hover:text-white"><i data-lucide="x" class="w-4 h-4"></i></button>
+      </div>
+      <div class="text-xs space-y-2 text-slate-300">
+        <p><b>ISRO SIH26175</b>: Continuous single-view elevation modeling and 3D terrain flythrough.</p>
+        <p><b>AI Supervisor</b>: OpenRouter Free router evaluates reconstruction parameters and data confidence.</p>
+        <p><b>Paint Selection</b>: Click 'Select Area', drag rectangle on map, click 'Render Selected Area'.</p>
+        <p><b>Navigation</b>: WASD to fly, Mouse look, Orbit mode for 360° inspection.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. JAVASCRIPT CONTROLLER SCRIPT -->
+  <script>
+    let scene, camera, renderer, terrainMesh, buildingGroup, currentData, map;
+    let isOrbitMode = true, orbitTheta = Math.PI / 4, orbitPhi = Math.PI / 4, orbitRadius = 110;
+    let isDragging = false, prevMouseX = 0, prevMouseY = 0;
+    let moveF = false, moveB = false, moveL = false, moveR = false, moveU = false, moveD = false;
+    let flightSpeed = 25.0;
+    let dirLight, hemiLight;
+    let selectedRect = { min_lon: 75.820, min_lat: 26.918, max_lon: 75.832, max_lat: 26.928, name: 'Jaipur City Palace & Hawa Mahal' };
+    let rectLayer = null, isPaintSelectMode = false, isDrawingRect = false, dragStartLatLng = null;
+
+    // 1. Initialize Three.js WebGL Scene (NO artificial floor, continuous terrain ground)
+    function initThree() {
+      const container = document.getElementById('webglTarget');
+      const w = container.clientWidth || 800;
+      const h = container.clientHeight || 600;
+
+      scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x060913);
+      scene.fog = new THREE.FogExp2(0x0a1020, 0.0018);
+
+      camera = new THREE.PerspectiveCamera(48, w / h, 0.5, 4000);
+      updateOrbitCam();
+
+      renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+      renderer.setSize(w, h);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.15;
+      container.appendChild(renderer.domElement);
+
+      hemiLight = new THREE.HemisphereLight(0xe2e8f0, 0x1e293b, 0.9);
+      scene.add(hemiLight);
+
+      dirLight = new THREE.DirectionalLight(0xfffaed, 1.4);
+      dirLight.position.set(70, 110, 60);
+      dirLight.castShadow = true;
+      dirLight.shadow.mapSize.width = 2048;
+      dirLight.shadow.mapSize.height = 2048;
+      dirLight.shadow.camera.near = 10;
+      dirLight.shadow.camera.far = 400;
+      dirLight.shadow.camera.left = -90;
+      dirLight.shadow.camera.right = 90;
+      dirLight.shadow.camera.top = 90;
+      dirLight.shadow.camera.bottom = -90;
+      dirLight.shadow.bias = -0.0004;
+      scene.add(dirLight);
+
+      buildingGroup = new THREE.Group();
+      scene.add(buildingGroup);
+
+      setup3DEvents(container);
+      animate();
+    }
+
+    function updateOrbitCam() {
+      const x = orbitRadius * Math.sin(orbitPhi) * Math.sin(orbitTheta);
+      const y = orbitRadius * Math.cos(orbitPhi);
+      const z = orbitRadius * Math.sin(orbitPhi) * Math.cos(orbitTheta);
+      camera.position.set(x, y, z);
+      camera.lookAt(0, 0, 0);
+    }
+
+    function autoFrameTerrain() {
+      if (!currentData || !currentData.mesh) return;
+      const b = currentData.mesh.bounds_meters || { min_x: -50, max_x: 50, min_z: -50, max_z: 50 };
+      const spanX = b.max_x - b.min_x;
+      const spanZ = b.max_z - b.min_z;
+      const maxSpan = Math.max(spanX, spanZ, 40.0);
+      orbitRadius = maxSpan * 1.18;
+      orbitPhi = Math.PI / 4;
+      orbitTheta = Math.PI / 4;
+      updateOrbitCam();
+    }
+
+    function setup3DEvents(container) {
+      window.addEventListener('resize', () => {
+        const w = container.clientWidth;
+        const h = container.clientHeight;
+        if (!w || !h) return;
+        camera.aspect = w / h;
+        camera.updateProjectionMatrix();
+        renderer.setSize(w, h);
+      });
+
+      const el = renderer.domElement;
+      el.addEventListener('mousedown', (e) => {
+        isDragging = true;
+        prevMouseX = e.clientX;
+        prevMouseY = e.clientY;
+      });
+
+      window.addEventListener('mousemove', (e) => {
+        if (!isDragging) return;
+        const dx = e.clientX - prevMouseX;
+        const dy = e.clientY - prevMouseY;
+        prevMouseX = e.clientX;
+        prevMouseY = e.clientY;
+
+        if (isOrbitMode) {
+          orbitTheta -= dx * 0.008;
+          orbitPhi = Math.max(0.08, Math.min(Math.PI / 2 - 0.04, orbitPhi + dy * 0.008));
+          updateOrbitCam();
+        } else {
+          camera.rotation.y -= dx * 0.0028;
+          camera.rotation.x = Math.max(-1.4, Math.min(1.4, camera.rotation.x - dy * 0.0028));
+        }
+      });
+
+      window.addEventListener('mouseup', () => { isDragging = false; });
+
+      el.addEventListener('wheel', (e) => {
+        if (isOrbitMode) {
+          e.preventDefault();
+          orbitRadius = Math.max(15, Math.min(450, orbitRadius + e.deltaY * 0.08));
+          updateOrbitCam();
+        } else {
+          flightSpeed = Math.max(5.0, Math.min(150.0, flightSpeed - e.deltaY * 0.05));
+          document.getElementById('hudSpeed').innerText = flightSpeed.toFixed(1) + ' m/s';
+        }
+      }, { passive: false });
+
+      window.addEventListener('keydown', (e) => {
+        if (isOrbitMode) return;
+        if (e.code === 'KeyW') moveF = true;
+        if (e.code === 'KeyS') moveB = true;
+        if (e.code === 'KeyA') moveL = true;
+        if (e.code === 'KeyD') moveR = true;
+        if (e.code === 'Space') moveU = true;
+        if (e.code === 'ShiftLeft') moveD = true;
+      });
+
+      window.addEventListener('keyup', (e) => {
+        if (isOrbitMode) return;
+        if (e.code === 'KeyW') moveF = false;
+        if (e.code === 'KeyS') moveB = false;
+        if (e.code === 'KeyA') moveL = false;
+        if (e.code === 'KeyD') moveR = false;
+        if (e.code === 'Space') moveU = false;
+        if (e.code === 'ShiftLeft') moveD = false;
+      });
+    }
+
+    let lastTime = performance.now();
+    function animate() {
+      requestAnimationFrame(animate);
+      const now = performance.now();
+      const delta = (now - lastTime) / 1000;
+      lastTime = now;
+
+      if (!isOrbitMode) {
+        const speed = flightSpeed * delta;
+        const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+        const right = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion);
+
+        if (moveF) camera.position.addScaledVector(forward, speed);
+        if (moveB) camera.position.addScaledVector(forward, -speed);
+        if (moveR) camera.position.addScaledVector(right, speed);
+        if (moveL) camera.position.addScaledVector(right, -speed);
+        if (moveU) camera.position.y += speed;
+        if (moveD) camera.position.y -= speed;
+
+        const groundY = getTerrainElevationAt(camera.position.x, camera.position.z);
+        if (camera.position.y < groundY + 2.5) {
+          camera.position.y = groundY + 2.5;
+        }
+
+        const altAgl = Math.max(0, Math.round(camera.position.y - groundY));
+        const headingDeg = Math.round((( -camera.rotation.y * 180 / Math.PI ) % 360 + 360) % 360);
+        document.getElementById('hudAlt').innerText = `${altAgl} m`;
+        document.getElementById('hudHeading').innerText = `${headingDeg.toString().padStart(3, '0')}°`;
+      }
+
+      renderer.render(scene, camera);
+    }
+
+    // 2. Continuous Terrain Mesh Loader & Real OSM Polygon Building Extrusion
+    function loadTerrainGeometry(meshData, textureUrl, buildings) {
+      if (terrainMesh) {
+        scene.remove(terrainMesh);
+        terrainMesh.geometry.dispose();
+      }
+
+      const geom = new THREE.BufferGeometry();
+      geom.setAttribute('position', new THREE.BufferAttribute(new Float32Array(meshData.vertices), 3));
+      geom.setAttribute('normal', new THREE.BufferAttribute(new Float32Array(meshData.normals), 3));
+      geom.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(meshData.uvs), 2));
+      geom.setIndex(meshData.indices);
+
+      const texture = new THREE.TextureLoader().load(textureUrl);
+      texture.wrapS = THREE.ClampToEdgeWrapping;
+      texture.wrapT = THREE.ClampToEdgeWrapping;
+      texture.anisotropy = 16;
+
+      const mat = new THREE.MeshStandardMaterial({
+        map: texture,
+        roughness: 0.80,
+        metalness: 0.05,
+        side: THREE.DoubleSide
+      });
+
+      terrainMesh = new THREE.Mesh(geom, mat);
+      terrainMesh.castShadow = true;
+      terrainMesh.receiveShadow = true;
+      scene.add(terrainMesh);
+
+      // Render authentic building footprints via ExtrudeGeometry (NO BoxGeometry cubes!)
+      renderBuildings(buildings || []);
+      autoFrameTerrain();
+    }
+
+    function renderBuildings(buildings) {
+      while(buildingGroup.children.length > 0) {
+        const obj = buildingGroup.children[0];
+        buildingGroup.remove(obj);
+        if (obj.geometry) obj.geometry.dispose();
+      }
+
+      if (!buildings || buildings.length === 0) return;
+
+      buildings.forEach(bldg => {
+        const poly = bldg.polygon_meters;
+        if (!poly || poly.length < 3) return;
+
+        const h = Math.max(bldg.height_meters || 12.0, 3.5);
+        const terrainBaseY = getTerrainElevationAt(bldg.centroid_meters.x, bldg.centroid_meters.z);
+
+        // Construct 2D shape directly from authentic OpenStreetMap polygon vertices
+        const shape = new THREE.Shape();
+        shape.moveTo(poly[0][0], -poly[0][1]);
+        for (let i = 1; i < poly.length; i++) {
+          shape.lineTo(poly[i][0], -poly[i][1]);
+        }
+        shape.closePath();
+
+        const extrudeSettings = {
+          depth: h,
+          bevelEnabled: false
+        };
+
+        const geom = new THREE.ExtrudeGeometry(shape, extrudeSettings);
+        geom.rotateX(Math.PI / 2);
+
+        const mat = new THREE.MeshStandardMaterial({
+          color: new THREE.Color(bldg.material.facade_color),
+          roughness: bldg.material.roughness || 0.75,
+          metalness: bldg.material.metalness || 0.1,
+          side: THREE.DoubleSide
+        });
+
+        const mesh = new THREE.Mesh(geom, mat);
+        mesh.position.set(0, terrainBaseY, 0);
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+
+        buildingGroup.add(mesh);
+      });
+    }
+
+    function getTerrainElevationAt(x, z) {
+      if (!terrainMesh || !currentData) return 0;
+      const baseVerts = currentData.mesh.vertices;
+      const b = currentData.mesh.bounds_meters || { min_x: -50, max_x: 50, min_z: -50, max_z: 50 };
+      const spanX = b.max_x - b.min_x;
+      const spanZ = b.max_z - b.min_z;
+      const gridW = currentData.mesh.grid_size[0];
+      const gridH = currentData.mesh.grid_size[1];
+
+      const u = Math.max(0, Math.min(1, (x - b.min_x) / spanX));
+      const v = Math.max(0, Math.min(1, (z - b.min_z) / spanZ));
+
+      const col = Math.floor(u * (gridW - 1));
+      const row = Math.floor(v * (gridH - 1));
+      const idx = (row * gridW + col) * 3;
+
+      if (idx >= 0 && idx < baseVerts.length) {
+        const exagg = parseFloat(document.getElementById('sliderExagg').value);
+        return baseVerts[idx + 1] * exagg;
+      }
+      return 0;
+    }
+
+    function setHeightExaggeration(factor) {
+      if (!terrainMesh || !currentData) return;
+      const baseVerts = currentData.mesh.vertices;
+      const posAttr = terrainMesh.geometry.getAttribute('position');
+      const arr = posAttr.array;
+
+      for (let i = 0; i < arr.length; i += 3) {
+        arr[i + 1] = baseVerts[i + 1] * factor;
+      }
+      posAttr.needsUpdate = true;
+      terrainMesh.geometry.computeVertexNormals();
+
+      if (currentData.buildings) {
+        renderBuildings(currentData.buildings);
+      }
+    }
+
+    // 3. Paint-Style Rectangular Area Selection on Leaflet Map with Deep Zoom (19)
+    function initGlobalMap() {
+      map = L.map('leafletMap', {
+        center: [26.9239, 75.8267],
+        zoom: 13,
+        maxZoom: 19,
+        zoomControl: true
+      });
+
+      L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+        attribution: '&copy; Esri, Maxar, OpenStreetMap contributors',
+        maxZoom: 19
+      }).addTo(map);
+
+      map.on('mousedown', (e) => {
+        if (!isPaintSelectMode) return;
+        map.dragging.disable();
+        isDrawingRect = true;
+        dragStartLatLng = e.latlng;
+
+        if (rectLayer) map.removeLayer(rectLayer);
+        const bounds = [dragStartLatLng, dragStartLatLng];
+        rectLayer = L.rectangle(bounds, { color: '#FF6B00', weight: 2, fillColor: '#38BDF8', fillOpacity: 0.35 }).addTo(map);
+      });
+
+      map.on('mousemove', (e) => {
+        if (!isDrawingRect || !dragStartLatLng || !rectLayer) return;
+        const bounds = L.latLngBounds(dragStartLatLng, e.latlng);
+        rectLayer.setBounds(bounds);
+        updateRectCard(bounds);
+      });
+
+      map.on('mouseup', (e) => {
+        if (!isDrawingRect || !dragStartLatLng) return;
+        isDrawingRect = false;
+        map.dragging.enable();
+        const bounds = L.latLngBounds(dragStartLatLng, e.latlng);
+        updateRectCard(bounds);
+      });
+
+      const initBounds = L.latLngBounds([26.918, 75.820], [26.928, 75.832]);
+      rectLayer = L.rectangle(initBounds, { color: '#FF6B00', weight: 2, fillColor: '#38BDF8', fillOpacity: 0.35 }).addTo(map);
+      updateRectCard(initBounds);
+    }
+
+    function updateRectCard(bounds) {
+      const sw = bounds.getSouthWest();
+      const ne = bounds.getNorthEast();
+
+      selectedRect = {
+        min_lon: sw.lng,
+        min_lat: sw.lat,
+        max_lon: ne.lng,
+        max_lat: ne.lat,
+        name: `Selected Rectangle (${sw.lat.toFixed(3)}°N, ${sw.lng.toFixed(3)}°E)`
+      };
+
+      const R_E = 6378.137;
+      const latMid = (sw.lat + ne.lat) / 2.0;
+      const wKm = Math.abs(ne.lng - sw.lng) * (Math.PI / 180) * R_E * Math.cos(latMid * Math.PI / 180);
+      const hKm = Math.abs(ne.lat - sw.lat) * (Math.PI / 180) * R_E;
+      const areaKm2 = (wKm * hKm).toFixed(2);
+
+      document.getElementById('selectedAreaCard').classList.remove('hidden');
+      document.getElementById('selAreaName').innerText = selectedRect.name;
+      document.getElementById('selAreaDimensions').innerText = `${wKm.toFixed(2)} km × ${hKm.toFixed(2)} km`;
+      document.getElementById('selAreaCoords').innerText = `${sw.lat.toFixed(3)}°N, ${sw.lng.toFixed(3)}°E`;
+      document.getElementById('selAreaKm2').innerText = `${areaKm2} km²`;
+    }
+
+    // 4. End-to-End Pipeline Execution with AI Supervisor Data Handling
+    async function executeSelectedRect(rect) {
+      try {
+        const res = await fetch('/api/geo/process_selected_rect', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            min_lon: rect.min_lon,
+            min_lat: rect.min_lat,
+            max_lon: rect.max_lon,
+            max_lat: rect.max_lat,
+            name: rect.name,
+            mesh_resolution: 128,
+            height_exaggeration: 1.0
+          })
+        });
+        const result = await res.json();
+        currentData = result;
+
+        loadTerrainGeometry(result.mesh, result.urls.texture, result.buildings);
+
+        document.getElementById('modeLabel').innerText = 'Mode 2: Georeferenced (Calibrated Metric DSM)';
+        document.getElementById('crsLabel').innerText = result.geographic_context?.projected_crs || 'EPSG:32643';
+        document.getElementById('statMin').innerText = result.statistics.min_elevation + ' m';
+        document.getElementById('statMean').innerText = result.statistics.mean_elevation + ' m';
+        document.getElementById('statMax').innerText = result.statistics.max_elevation + ' m';
+        document.getElementById('vertTag').innerText = `Vertices: ${result.mesh.vertex_count.toLocaleString()}`;
+
+        // AI Supervisor & Confidence updates
+        if (result.supervisor_decision) {
+          const sup = result.supervisor_decision;
+          const conf = sup.data_confidence || 'HIGH';
+          document.getElementById('confidenceTag').innerText = `CONFIDENCE: ${conf}`;
+          document.getElementById('inspConf').innerText = conf;
+          document.getElementById('inspComp').innerText = `${sup.terrain_complexity || 0.4} / 1.0`;
+          document.getElementById('inspLod').innerText = sup.recommended_terrain_lod || 'HIGH';
+        }
+
+        // Inspector updates
+        document.getElementById('inspLoc').innerText = result.geographic_context?.name || 'Selected Region';
+        document.getElementById('inspCrs').innerText = result.geographic_context?.projected_crs || 'EPSG:32643';
+        const dims = result.geographic_context?.dimensions_meters || { width: 1000, height: 1000 };
+        document.getElementById('inspDim').innerText = `${(dims.width / 1000).toFixed(2)} km × ${(dims.height / 1000).toFixed(2)} km`;
+        document.getElementById('inspArea').innerText = `${result.geographic_context?.approx_area_km2 || 1.0} km²`;
+        document.getElementById('inspBldgs').innerText = `${result.buildings?.length || 0} Polygons`;
+        document.getElementById('inspVerts').innerText = result.mesh.vertex_count.toLocaleString();
+
+        if (result.calibration_metrics) {
+          document.getElementById('calibMae').innerText = result.calibration_metrics.mae_meters + ' m';
+          document.getElementById('calibRmse').innerText = result.calibration_metrics.rmse_meters + ' m';
+          document.getElementById('calibR').innerText = result.calibration_metrics.pearson_r;
+          document.getElementById('calibR2').innerText = result.calibration_metrics.r2_score;
+        }
+
+        const histContainer = document.getElementById('histBars');
+        histContainer.innerHTML = '';
+        const maxCount = Math.max(...result.histogram.map(h => h.count), 1);
+        result.histogram.forEach(bin => {
+          const bar = document.createElement('div');
+          const pct = Math.max((bin.count / maxCount) * 100, 8);
+          bar.className = 'flex-1 bg-gradient-to-t from-isro-blue to-isro-sky rounded-t';
+          bar.style.height = pct + '%';
+          histContainer.appendChild(bar);
+        });
+
+        document.getElementById('btnExportTif').href = result.urls.geotiff_dsm || '#';
+        document.getElementById('btnExportObj').href = result.urls.obj_mesh;
+        document.getElementById('splitRgb').src = result.urls.texture;
+        document.getElementById('splitDepth').src = result.urls.relative_depth;
+        document.getElementById('splitDsm').src = result.urls.dsm_preview;
+
+      } catch (err) {
+        console.error(err);
+        alert('Execution failed: ' + err.message);
+      }
+    }
+
+    // 5. DOM Initialization & Search Layering Fix
+    window.addEventListener('DOMContentLoaded', async () => {
+      initThree();
+      initGlobalMap();
+      lucide.createIcons();
+
+      // Initial execution
+      executeSelectedRect(selectedRect);
+
+      // Inspector Modal Toggle
+      document.getElementById('btnInspectorModal').addEventListener('click', () => document.getElementById('modalInspector').classList.remove('hidden'));
+      document.getElementById('btnCloseInspector').addEventListener('click', () => document.getElementById('modalInspector').classList.add('hidden'));
+
+      // Paint Select Toggle
+      const btnPaint = document.getElementById('btnPaintSelectToggle');
+      btnPaint.addEventListener('click', () => {
+        isPaintSelectMode = !isPaintSelectMode;
+        if (isPaintSelectMode) {
+          document.getElementById('leafletMap').classList.add('leaflet-crosshair');
+          btnPaint.className = 'px-3 py-1.5 rounded bg-amber-600 text-white font-semibold flex items-center space-x-1.5 shadow';
+          document.getElementById('paintSelectLabel').innerText = 'Drawing Mode Active...';
+        } else {
+          document.getElementById('leafletMap').classList.remove('leaflet-crosshair');
+          btnPaint.className = 'px-3 py-1.5 rounded bg-space-800 hover:bg-space-700 text-amber-300 border border-amber-600/50 font-medium flex items-center space-x-1.5';
+          document.getElementById('paintSelectLabel').innerText = 'Select Area (Drag Box)';
+        }
+      });
+
+      document.getElementById('btnClearSelection').addEventListener('click', () => {
+        if (rectLayer) map.removeLayer(rectLayer);
+        document.getElementById('selectedAreaCard').classList.add('hidden');
+      });
+
+      document.getElementById('btnConfirmAnalyze').addEventListener('click', () => {
+        document.querySelector('[data-view="3d"]').click();
+        executeSelectedRect(selectedRect);
+      });
+
+      // Search Mode Toggle
+      const btnModePlace = document.getElementById('btnSearchModePlace');
+      const btnModeCoord = document.getElementById('btnSearchModeCoord');
+      const placeSearchCont = document.getElementById('placeSearchContainer');
+      const coordSearchCont = document.getElementById('coordSearchContainer');
+
+      btnModePlace.addEventListener('click', () => {
+        btnModePlace.className = 'px-2 py-1 rounded font-medium bg-isro-blue text-white shadow text-[11px]';
+        btnModeCoord.className = 'px-2 py-1 rounded font-medium text-slate-400 hover:text-white text-[11px]';
+        placeSearchCont.classList.remove('hidden');
+        coordSearchCont.classList.add('hidden');
+      });
+
+      btnModeCoord.addEventListener('click', () => {
+        btnModeCoord.className = 'px-2 py-1 rounded font-medium bg-isro-blue text-white shadow text-[11px]';
+        btnModePlace.className = 'px-2 py-1 rounded font-medium text-slate-400 hover:text-white text-[11px]';
+        coordSearchCont.classList.remove('hidden');
+        placeSearchCont.classList.add('hidden');
+      });
+
+      document.getElementById('btnGoCoord').addEventListener('click', () => {
+        const lat = parseFloat(document.getElementById('coordLatInput').value);
+        const lon = parseFloat(document.getElementById('coordLonInput').value);
+        if (isNaN(lat) || isNaN(lon)) return;
+        map.flyTo([lat, lon], 14);
+        const halfSpan = 0.005;
+        const b = L.latLngBounds([lat - halfSpan, lon - halfSpan], [lat + halfSpan, lon + halfSpan]);
+        if (rectLayer) map.removeLayer(rectLayer);
+        rectLayer = L.rectangle(b, { color: '#FF6B00', weight: 2, fillColor: '#38BDF8', fillOpacity: 0.35 }).addTo(map);
+        updateRectCard(b);
+      });
+
+      // Layer-Safe Search Autocomplete with Debouncing
+      const searchInput = document.getElementById('mapSearchInput');
+      const searchDropdown = document.getElementById('searchDropdown');
+      const btnClearSearch = document.getElementById('btnClearSearch');
+
+      let debounceTimer = null;
+      searchInput.addEventListener('input', (e) => {
+        const q = e.target.value.trim();
+        if (q.length > 0) btnClearSearch.classList.remove('hidden');
+        else btnClearSearch.classList.add('hidden');
+
+        clearTimeout(debounceTimer);
+        if (q.length < 2) { searchDropdown.classList.add('hidden'); return; }
+
+        debounceTimer = setTimeout(async () => {
+          try {
+            const res = await fetch(`/api/geo/search?q=${encodeURIComponent(q)}`);
+            const { results } = await res.json();
+            searchDropdown.innerHTML = '';
+            if (results && results.length > 0) {
+              searchDropdown.classList.remove('hidden');
+              results.forEach(loc => {
+                const row = document.createElement('div');
+                row.className = 'p-2.5 hover:bg-space-800 cursor-pointer border-b border-space-800/80 flex justify-between items-center text-xs transition-colors';
+                row.innerHTML = `
+                  <div class="flex items-center space-x-2">
+                    <i data-lucide="map-pin" class="w-3.5 h-3.5 text-sky-400 shrink-0"></i>
+                    <div>
+                      <div class="font-bold text-white">${loc.name}</div>
+                      <div class="text-[10px] text-slate-400 truncate max-w-sm">${loc.city || ''}</div>
+                    </div>
+                  </div>
+                  <span class="text-[9px] px-1.5 py-0.5 rounded bg-space-950 text-slate-300 border border-space-800 font-mono">${loc.category}</span>
+                `;
+                row.onclick = () => {
+                  searchDropdown.classList.add('hidden');
+                  searchInput.value = loc.name;
+                  map.flyTo([loc.lat, loc.lon], 15);
+                  const halfSpan = 0.0045;
+                  const b = L.latLngBounds([loc.lat - halfSpan, loc.lon - halfSpan], [loc.lat + halfSpan, loc.lon + halfSpan]);
+                  if (rectLayer) map.removeLayer(rectLayer);
+                  rectLayer = L.rectangle(b, { color: '#FF6B00', weight: 2, fillColor: '#38BDF8', fillOpacity: 0.35 }).addTo(map);
+                  updateRectCard(b);
+                };
+                searchDropdown.appendChild(row);
+              });
+              lucide.createIcons();
+            } else {
+              searchDropdown.classList.remove('hidden');
+              searchDropdown.innerHTML = '<div class="p-3 text-xs text-slate-400 text-center">No matching locations found</div>';
+            }
+          } catch (err) { console.error(err); }
+        }, 220);
+      });
+
+      btnClearSearch.addEventListener('click', () => {
+        searchInput.value = '';
+        btnClearSearch.classList.add('hidden');
+        searchDropdown.classList.add('hidden');
+      });
+
+      document.addEventListener('click', (e) => {
+        if (!placeSearchCont.contains(e.target)) {
+          searchDropdown.classList.add('hidden');
+        }
+      });
+
+      // 3D Controls
+      document.getElementById('sliderExagg').addEventListener('input', (e) => {
+        const v = parseFloat(e.target.value);
+        document.getElementById('exaggVal').innerText = v === 1.0 ? '1.0x (1:1 Metric)' : v.toFixed(1) + 'x';
+        setHeightExaggeration(v);
+      });
+
+      document.getElementById('sliderSun').addEventListener('input', (e) => {
+        const v = parseInt(e.target.value);
+        document.getElementById('sunVal').innerText = v + '°';
+        const rad = v * (Math.PI / 180);
+        dirLight.position.set(70 * Math.cos(rad), 110 * Math.sin(rad), 60 * Math.cos(rad));
+      });
+
+      document.getElementById('btnCamOrbit').addEventListener('click', () => {
+        isOrbitMode = true;
+        document.getElementById('btnCamOrbit').className = 'py-1 rounded font-medium bg-isro-blue text-white shadow';
+        document.getElementById('btnCamFly').className = 'py-1 rounded font-medium text-slate-400 hover:text-white';
+        document.getElementById('flightHud').classList.add('hidden');
+        updateOrbitCam();
+      });
+
+      document.getElementById('btnCamFly').addEventListener('click', () => {
+        isOrbitMode = false;
+        document.getElementById('btnCamFly').className = 'py-1 rounded font-medium bg-isro-blue text-white shadow';
+        document.getElementById('btnCamOrbit').className = 'py-1 rounded font-medium text-slate-400 hover:text-white';
+        document.getElementById('flightHud').classList.remove('hidden');
+      });
+
+      document.getElementById('btnFitReset').addEventListener('click', autoFrameTerrain);
+
+      document.getElementById('btnToggleSidebar').addEventListener('click', () => {
+        const sb = document.getElementById('sidebarAnalytics');
+        sb.classList.toggle('hidden');
+      });
+
+      document.getElementById('btnFullscreen').addEventListener('click', () => {
+        if (!document.fullscreenElement) {
+          document.documentElement.requestFullscreen();
+          document.getElementById('fsIcon').setAttribute('data-lucide', 'minimize');
+        } else {
+          document.exitFullscreen();
+          document.getElementById('fsIcon').setAttribute('data-lucide', 'maximize');
+        }
+        lucide.createIcons();
+      });
+
+      // Shading Materials
+      document.getElementById('btnMatTexture').addEventListener('click', () => {
+        if (!terrainMesh || !currentData) return;
+        terrainMesh.material.map = new THREE.TextureLoader().load(currentData.urls.texture);
+        terrainMesh.material.wireframe = false;
+        terrainMesh.material.needsUpdate = true;
+      });
+
+      document.getElementById('btnMatColormap').addEventListener('click', () => {
+        if (!terrainMesh || !currentData) return;
+        terrainMesh.material.map = new THREE.TextureLoader().load(currentData.urls.dsm_preview);
+        terrainMesh.material.wireframe = false;
+        terrainMesh.material.needsUpdate = true;
+      });
+
+      document.getElementById('btnMatClay').addEventListener('click', () => {
+        if (!terrainMesh) return;
+        terrainMesh.material.map = null;
+        terrainMesh.material.color = new THREE.Color(0xd4d4d8);
+        terrainMesh.material.wireframe = false;
+        terrainMesh.material.needsUpdate = true;
+      });
+
+      document.getElementById('btnMatWireframe').addEventListener('click', () => {
+        if (!terrainMesh) return;
+        terrainMesh.material.wireframe = !terrainMesh.material.wireframe;
+        terrainMesh.material.needsUpdate = true;
+      });
+
+      // Modals
+      document.getElementById('btnImg2D3DModal').addEventListener('click', () => document.getElementById('modalImg2D3D').classList.remove('hidden'));
+      document.getElementById('btnCloseImg2D3D').addEventListener('click', () => document.getElementById('modalImg2D3D').classList.add('hidden'));
+
+      document.getElementById('btnConvert2DTo3D').addEventListener('click', async () => {
+        const fileInput = document.getElementById('inputPhoto2D');
+        if (!fileInput.files || fileInput.files.length === 0) { alert('Please select a photo.'); return; }
+        const formData = new FormData();
+        formData.append('file', fileInput.files[0]);
+        formData.append('depth_strength', document.getElementById('sliderDepthStrength').value);
+        formData.append('mesh_resolution', document.getElementById('selectMeshRes2D').value);
+        try {
+          const res = await fetch('/api/img2d3d/convert', { method: 'POST', body: formData });
+          const result = await res.json();
+          document.getElementById('modalImg2D3D').classList.add('hidden');
+          currentData = { mesh: result.mesh, urls: { texture: result.urls.texture, relative_depth: result.urls.depth_map, dsm_preview: result.urls.depth_map, obj_mesh: result.urls.obj_mesh }, buildings: [], statistics: { min_elevation: 0, mean_elevation: 0.5, max_elevation: 1 }, histogram: [] };
+          loadTerrainGeometry(result.mesh, result.urls.texture, []);
+          document.querySelector('[data-view="3d"]').click();
+        } catch (err) { alert('Conversion failed: ' + err.message); }
+      });
+
+      document.getElementById('btnDemoModal').addEventListener('click', () => document.getElementById('modalDemo').classList.remove('hidden'));
+      document.getElementById('btnCloseDemo').addEventListener('click', () => document.getElementById('modalDemo').classList.add('hidden'));
+      document.getElementById('btnUploadModal').addEventListener('click', () => document.getElementById('modalUpload').classList.remove('hidden'));
+      document.getElementById('btnCloseUpload').addEventListener('click', () => document.getElementById('modalUpload').classList.add('hidden'));
+      document.getElementById('btnHelpModal').addEventListener('click', () => document.getElementById('modalHelp').classList.remove('hidden'));
+      document.getElementById('btnCloseHelp').addEventListener('click', () => document.getElementById('modalHelp').classList.add('hidden'));
+
+      // View Tab Navigation
+      document.querySelectorAll('#viewTabs .tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('#viewTabs .tab-btn').forEach(b => b.className = 'tab-btn px-2.5 py-1 rounded font-medium flex items-center space-x-1.5 text-slate-400 hover:text-white');
+          btn.className = 'tab-btn active px-2.5 py-1 rounded font-medium flex items-center space-x-1.5 bg-isro-blue text-white shadow';
+
+          const mode = btn.getAttribute('data-view');
+          const webgl = document.getElementById('webglTarget');
+          const floatCtrl = document.getElementById('floatingControls');
+          const overlayMap = document.getElementById('globalMapOverlay');
+          const overlay2d = document.getElementById('view2dOverlay');
+          const overlaySplit = document.getElementById('viewSplitOverlay');
+          const img2d = document.getElementById('view2dImg');
+
+          overlayMap.classList.add('hidden');
+          overlay2d.classList.add('hidden');
+          overlaySplit.classList.add('hidden');
+          webgl.classList.remove('hidden');
+          floatCtrl.classList.remove('hidden');
+
+          if (mode === 'globe') {
+            overlayMap.classList.remove('hidden');
+            floatCtrl.classList.add('hidden');
+            webgl.classList.add('hidden');
+            setTimeout(() => map.invalidateSize(), 150);
+          } else if (mode === 'rgb') {
+            overlay2d.classList.remove('hidden');
+            floatCtrl.classList.add('hidden');
+            img2d.src = currentData.urls.texture;
+          } else if (mode === 'depth') {
+            overlay2d.classList.remove('hidden');
+            floatCtrl.classList.add('hidden');
+            img2d.src = currentData.urls.relative_depth;
+          } else if (mode === 'dsm') {
+            overlay2d.classList.remove('hidden');
+            floatCtrl.classList.add('hidden');
+            img2d.src = currentData.urls.dsm_preview;
+          } else if (mode === 'split') {
+            overlaySplit.classList.remove('hidden');
+            floatCtrl.classList.add('hidden');
+          }
+        });
+      });
+    });
+  </script>
+</body>
+</html>

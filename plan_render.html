@@ -1,0 +1,444 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>DepthWizard — Implementation Plan (ISRO SIH26175)</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+  @page {
+    size: A4;
+    margin: 14mm 14mm 16mm 14mm;
+  }
+
+  * {
+    box-sizing: border-box;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    color: #1e293b;
+    background: #ffffff;
+    line-height: 1.5;
+    font-size: 9.5pt;
+    margin: 0;
+    padding: 0;
+  }
+
+  .header {
+    border-bottom: 2px solid #0284c7;
+    padding-bottom: 12px;
+    margin-bottom: 14px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+  }
+
+  .header-left h1 {
+    font-size: 18pt;
+    font-weight: 800;
+    color: #0f172a;
+    margin: 0 0 4px 0;
+    letter-spacing: -0.5px;
+  }
+
+  .header-left .subtitle {
+    font-size: 10pt;
+    color: #0284c7;
+    font-weight: 600;
+    margin: 0;
+  }
+
+  .badges {
+    display: flex;
+    gap: 6px;
+    margin-top: 6px;
+  }
+
+  .badge {
+    display: inline-block;
+    padding: 2px 7px;
+    border-radius: 4px;
+    font-size: 7pt;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .badge-isro { background: #ffedd5; color: #c2410c; border: 1px solid #fed7aa; }
+  .badge-sih { background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; }
+  .badge-status { background: #dcfce7; color: #15803d; border: 1px solid #bbf7d0; }
+
+  .header-right {
+    text-align: right;
+    font-size: 8pt;
+    color: #64748b;
+  }
+
+  h2 {
+    font-size: 11.5pt;
+    font-weight: 700;
+    color: #0f172a;
+    border-left: 4px solid #0284c7;
+    padding-left: 8px;
+    margin-top: 14px;
+    margin-bottom: 6px;
+    letter-spacing: -0.2px;
+    page-break-after: avoid;
+  }
+
+  h3 {
+    font-size: 10pt;
+    font-weight: 600;
+    color: #1e293b;
+    margin-top: 10px;
+    margin-bottom: 4px;
+    page-break-after: avoid;
+  }
+
+  p {
+    margin: 0 0 6px 0;
+    color: #334155;
+  }
+
+  .lead {
+    font-size: 9.5pt;
+    color: #334155;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    padding: 8px 12px;
+    margin-bottom: 12px;
+  }
+
+  .card-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 10px;
+    page-break-inside: avoid;
+  }
+
+  .card {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    padding: 8px 10px;
+  }
+
+  .card-title {
+    font-size: 9pt;
+    font-weight: 700;
+    color: #0369a1;
+    margin-bottom: 4px;
+  }
+
+  .card ul {
+    margin: 0;
+    padding-left: 14px;
+    font-size: 8pt;
+    color: #475569;
+  }
+
+  .card li {
+    margin-bottom: 2px;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 8pt;
+    margin: 8px 0 10px 0;
+    page-break-inside: avoid;
+  }
+
+  th {
+    background: #f1f5f9;
+    color: #0f172a;
+    font-weight: 600;
+    text-align: left;
+    padding: 5px 8px;
+    border: 1px solid #cbd5e1;
+  }
+
+  td {
+    padding: 5px 8px;
+    border: 1px solid #e2e8f0;
+    color: #334155;
+  }
+
+  tr:nth-child(even) td {
+    background: #f8fafc;
+  }
+
+  .formula-box {
+    background: #0f172a;
+    color: #38bdf8;
+    padding: 8px 10px;
+    border-radius: 6px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 8pt;
+    margin: 6px 0 10px 0;
+    page-break-inside: avoid;
+  }
+
+  .formula-box span {
+    color: #e2e8f0;
+  }
+
+  .code-tree {
+    background: #0f172a;
+    color: #94a3b8;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 7pt;
+    line-height: 1.35;
+    padding: 8px 12px;
+    border-radius: 6px;
+    margin: 8px 0 10px 0;
+    page-break-inside: avoid;
+  }
+
+  .code-tree .dir { color: #38bdf8; font-weight: 600; }
+  .code-tree .file { color: #f1f5f9; }
+  .code-tree .comment { color: #64748b; font-style: italic; }
+
+  .page-break {
+    page-break-before: always;
+  }
+
+  .step-list {
+    margin: 0 0 10px 0;
+    padding-left: 16px;
+    font-size: 8.5pt;
+  }
+
+  .step-list li {
+    margin-bottom: 4px;
+    color: #334155;
+  }
+
+  .step-list strong {
+    color: #0f172a;
+  }
+
+  .footer {
+    margin-top: 18px;
+    padding-top: 6px;
+    border-top: 1px solid #e2e8f0;
+    display: flex;
+    justify-content: space-between;
+    font-size: 7pt;
+    color: #94a3b8;
+  }
+</style>
+</head>
+<body>
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="header-left">
+      <h1>DepthWizard</h1>
+      <div class="subtitle">Single-View Height Estimation and 3D Flythrough</div>
+      <div class="badges">
+        <span class="badge badge-isro">ISRO Problem SIH26175</span>
+        <span class="badge badge-sih">SIH 2026</span>
+        <span class="badge badge-status">Architecture & Implementation Blueprint</span>
+      </div>
+    </div>
+    <div class="header-right">
+      <strong>Engineering Team Master Plan</strong><br>
+      Version: 1.0.0-Release<br>
+      Date: August 2026
+    </div>
+  </div>
+
+  <!-- EXECUTIVE SUMMARY -->
+  <div class="lead">
+    <strong>Executive Objective:</strong> Construct a production-grade, scientifically grounded, zero-placeholder end-to-end pipeline that transforms single-view optical RGB remote sensing imagery into calibrated relative or absolute Digital Surface Models (DSM) and an interactive 3D WebGL flythrough environment with structural and topographical height analysis tools.
+  </div>
+
+  <!-- CORE PROBLEM MODES -->
+  <h2>1. Dual Ingestion Pipelines</h2>
+  <div class="card-grid">
+    <div class="card">
+      <div class="card-title">Mode 1: Non-Georeferenced (PNG / JPG)</div>
+      <ul>
+        <li><strong>Input:</strong> Aerial drone / satellite RGB image snapshots.</li>
+        <li><strong>Inference:</strong> Zero-shot Depth Anything V2 monocular backbone.</li>
+        <li><strong>Output:</strong> Relative Digital Surface Model (rDSM), normalized elevation [0, 1].</li>
+        <li><strong>3D Engine:</strong> Height-exaggerated terrain mesh textured with source RGB.</li>
+        <li><strong>Disclaimer:</strong> UI transparently marks heights as relative units.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="card-title">Mode 2: Georeferenced (GeoTIFF / Raster)</div>
+      <ul>
+        <li><strong>Input:</strong> Satellite imagery with CRS, bounds & GSD transform.</li>
+        <li><strong>Alignment:</strong> Matched reference DEM (SRTM/COP30) or user GCPs.</li>
+        <li><strong>Calibration:</strong> Robust Huber scale-offset regression (Z = s · D_rel + t).</li>
+        <li><strong>Output:</strong> Absolute Metric DSM (in meters) + GeoTIFF export.</li>
+        <li><strong>Quality:</strong> Explicit MAE, RMSE, Pearson r, and R² validation metrics.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- CALIBRATION FORMULATION -->
+  <h2>2. Depth-to-Elevation Mathematical Calibration</h2>
+  <p>Rather than pseudo-normalizing depth, DepthWizard derives absolute physical elevation via robust M-estimation (Huber Regression) against spatial control reference points:</p>
+  
+  <div class="formula-box">
+    <span>Metric Elevation:</span> Z_pred(x, y) = s · D_rel(x, y) + t<br>
+    <span>Objective:</span> min_{s, t} ∑ ρ_δ(Z_ref(x_i, y_i) - (s · D_rel(x_i, y_i) + t))<br>
+    <span>Metrics:</span> RMSE = √( 1/N ∑ (Z_pred - Z_ref)² ),  MAE = 1/N ∑ |Z_pred - Z_ref|,  R² = 1 - (SS_res / SS_tot)
+  </div>
+
+  <!-- SYSTEM ARCHITECTURE -->
+  <h2>3. System Architecture & Tech Stack</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Layer</th>
+        <th>Technologies</th>
+        <th>Key Responsibilities</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Backend API</strong></td>
+        <td>FastAPI, Uvicorn, Pydantic, Python 3.10+</td>
+        <td>RESTful endpoints, task queue, GeoTIFF serialization, spatial analytics API.</td>
+      </tr>
+      <tr>
+        <td><strong>ML Core</strong></td>
+        <td>PyTorch, ONNX Runtime, Depth-Anything-V2</td>
+        <td>Monocular depth prediction with GPU/CPU auto-dispatch and fallback adapters.</td>
+      </tr>
+      <tr>
+        <td><strong>Geospatial</strong></td>
+        <td>rasterio, GDAL, affine, pyproj, scipy</td>
+        <td>CRS reprojection, DEM resampling, GCP spatial indexing, affine transform mapping.</td>
+      </tr>
+      <tr>
+        <td><strong>Frontend & 3D</strong></td>
+        <td>React 19, TypeScript, Vite, Tailwind CSS, Three.js</td>
+        <td>Interactive 4-pane comparative viewer, First-Person Drone flythrough, shaders, and UI.</td>
+      </tr>
+      <tr>
+        <td><strong>Analytics</strong></td>
+        <td>HTML5 Canvas, Lucide Icons, Charting</td>
+        <td>Point elevation query, 2-point structural height ΔZ, slope θ°, cross-section profiles.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="page-break"></div>
+
+  <!-- 3D FLYTHROUGH & ANALYSIS -->
+  <h2>4. Interactive 3D Terrain Engine & Geospatial Tools</h2>
+  <div class="card-grid">
+    <div class="card">
+      <div class="card-title">3D Terrain Flythrough Features</div>
+      <ul>
+        <li><strong>Dual Camera Modes:</strong> First-Person Drone flight (WASD + Mouse look) & Orbit mode.</li>
+        <li><strong>Real-time Exaggeration:</strong> Dynamic vertical scaling slider (0.1x – 5.0x).</li>
+        <li><strong>Shader Materials:</strong> True Optical RGB texture, wireframe overlay, and scientific colormaps (Turbo, Viridis, Terrain).</li>
+        <li><strong>Lighting Controls:</strong> Solar azimuth and elevation controls for dynamic micro-relief shadows.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="card-title">Geospatial Analysis Suite</div>
+      <ul>
+        <li><strong>Point Query:</strong> Click-to-inspect precise (Lat, Lon, Elevation Z).</li>
+        <li><strong>Structural Height Measurement:</strong> 2-point 3D measurement for building/cliff heights (ΔZ).</li>
+        <li><strong>Slope Computation:</strong> Direct grade percentage and angle (θ°) between points.</li>
+        <li><strong>Elevation Cross-Section:</strong> Dynamic line-profile elevation graph across ridges.</li>
+        <li><strong>Distribution Histogram:</strong> Hypsometric curve & terrain statistics.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- REPOSITORY STRUCTURE -->
+  <h2>5. Project Repository Architecture</h2>
+  <div class="code-tree">
+<span class="dir">DepthWizard/</span>
+├── <span class="file">README.md</span>                        <span class="comment"># Main technical documentation & quickstart</span>
+├── <span class="file">ARCHITECTURE.md</span>                  <span class="comment"># Architectural specifications</span>
+├── <span class="file">MODEL_DECISIONS.md</span>               <span class="comment"># Model evaluation & selection rationales</span>
+├── <span class="file">CALIBRATION.md</span>                   <span class="comment"># Mathematical formulation of elevation mapping</span>
+├── <span class="file">DEMO_GUIDE.md</span>                    <span class="comment"># 3-Minute SIH jury demonstration script</span>
+├── <span class="file">requirements.txt</span>                 <span class="comment"># Backend Python dependencies</span>
+├── <span class="dir">backend/</span>
+│   ├── <span class="dir">app/</span>
+│   │   ├── <span class="file">main.py</span>                      <span class="comment"># FastAPI application entrypoint</span>
+│   │   ├── <span class="dir">api/</span>                         <span class="comment"># Endpoints (upload, process, mesh, analysis, demo)</span>
+│   │   ├── <span class="dir">ml/</span>                          <span class="comment"># BaseDepthModel, DepthAnythingV2, colormaps</span>
+│   │   ├── <span class="dir">geospatial/</span>                  <span class="comment"># GeoTIFFHandler, DEMAligner, Calibrator, GCPManager</span>
+│   │   └── <span class="dir">processing/</span>                  <span class="comment"># Pipeline orchestrator, MeshGenerator, Exporter</span>
+│   └── <span class="dir">tests/</span>                           <span class="comment"># Automated unit & end-to-end integration tests</span>
+├── <span class="dir">frontend/</span>
+│   ├── <span class="dir">src/</span>
+│   │   ├── <span class="file">App.tsx</span>                      <span class="comment"># Main UI Dashboard layout</span>
+│   │   ├── <span class="dir">components/</span>                 <span class="comment"># 4-Pane viewer, Fly controls, Analysis panels, Charts</span>
+│   │   └── <span class="dir">three/</span>                      <span class="comment"># SceneManager, TerrainMesh, FlyController</span>
+└── <span class="dir">data/demo/</span>                           <span class="comment"># Bundled offline datasets (GeoTIFF, SRTM DEM, Optical RGB)</span>
+  </div>
+
+  <!-- DEMONSTRATION WORKFLOW -->
+  <h2>6. 3-Minute SIH Jury Presentation Workflow</h2>
+  <ol class="step-list">
+    <li><strong>Step 1 (Ingestion):</strong> Select bundled GeoTIFF sample. System reads spatial metadata (CRS: EPSG:32643, GSD: 0.5m, Dimensions: 1024 x 1024).</li>
+    <li><strong>Step 2 (Depth Inference):</strong> Zero-shot Depth Anything V2 generates relative depth map with dense micro-relief preservation.</li>
+    <li><strong>Step 3 (DEM / GCP Calibration):</strong> Spatial aligner pairs relative depth with reference SRTM elevation, displaying Huber calibration fit (R² = 0.94, RMSE: 2.8m).</li>
+    <li><strong>Step 4 (3D Mesh & Texture Mapping):</strong> Triangulated terrain mesh generated with optical RGB texture mapped 1:1 onto vertices.</li>
+    <li><strong>Step 5 (Interactive Flythrough):</strong> Pilot the camera in first-person drone mode across mountain ridges and structures.</li>
+    <li><strong>Step 6 (Spatial Analysis & Export):</strong> Measure building height (ΔZ = 42.5m), draw a cross-section profile, and export the calibrated GeoTIFF DSM.</li>
+  </ol>
+
+  <!-- VERIFICATION & ASSURANCE -->
+  <h2>7. Verification & Acceptance Criteria</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Verification Item</th>
+        <th>Target Standard</th>
+        <th>Verification Method</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Dual Format Ingestion</td>
+        <td>Non-georeferenced PNG/JPG and Georeferenced GeoTIFF</td>
+        <td>Automated unit tests & rasterio validator</td>
+      </tr>
+      <tr>
+        <td>Model Inference</td>
+        <td>&lt; 2.5s on GPU / &lt; 8s on CPU fallback</td>
+        <td>Benchmark tests on 1024x1024 rasters</td>
+      </tr>
+      <tr>
+        <td>Calibration Accuracy</td>
+        <td>R² &gt; 0.85, RMSE &lt; 5m on test DEM reference</td>
+        <td>Residual error metrics on held-out control points</td>
+      </tr>
+      <tr>
+        <td>3D Performance</td>
+        <td>Smooth 60 FPS WebGL rendering with dynamic LOD</td>
+        <td>Browser frame rate monitor in Three.js</td>
+      </tr>
+      <tr>
+        <td>Offline Reliability</td>
+        <td>100% operational without external network or API keys</td>
+        <td>Clean disconnected demo test run</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="footer">
+    <span>DepthWizard — ISRO Problem SIH26175 Implementation Plan</span>
+    <span>Autonomous AI Architecture Team</span>
+  </div>
+
+</body>
+</html>
