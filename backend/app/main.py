@@ -59,12 +59,21 @@ app.include_router(img2d3d_router)
 @app.get("/api/health")
 async def health_check():
     """Backend service health and subsystem status check."""
+    # Fetch current model status
+    try:
+        from backend.app.ml.model_manager import ModelManager
+        model = ModelManager.get_instance().get_depth_model()
+        model_status = model.get_metadata()
+    except Exception:
+        model_status = {"model_name": "unknown", "is_fallback": True}
+
     return {
         "status": "healthy",
         "service": "DepthWizard API",
         "version": APP_VERSION,
         "isro_problem": "SIH26175",
         "local_url": "http://depthwizard.localhost:8000",
+        "depth_model": model_status,
         "capabilities": {
             "monocular_depth": True,
             "geotiff_processing": True,

@@ -1,4 +1,4 @@
-﻿// frontend/src/components/AnalysisPanel.tsx
+// frontend/src/components/AnalysisPanel.tsx
 import React, { useState } from 'react';
 import { SummaryStats, CalibrationMetrics, SpatialMetadata } from '../types';
 import { Ruler, Mountain, Target, BarChart2, Info, Compass, Maximize } from 'lucide-react';
@@ -12,6 +12,7 @@ interface AnalysisPanelProps {
   calibration?: CalibrationMetrics | null;
   histogram: Array<{ bin_start: number; bin_end: number; count: number }>;
   urls: any;
+  modelMetadata?: { model_name: string; backbone: string; is_fallback: boolean; device: string } | null;
   onRunMeasurement?: (dz: number, slope: number) => void;
 }
 
@@ -20,7 +21,8 @@ export const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
   metadata,
   calibration,
   histogram,
-  urls
+  urls,
+  modelMetadata
 }) => {
   const [pointAz, setPointAz] = useState<number>(stats.min_elevation + (stats.max_elevation - stats.min_elevation) * 0.25);
   const [pointBz, setPointBz] = useState<number>(stats.max_elevation * 0.85);
@@ -135,18 +137,26 @@ export const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
         </div>
         <div className=\"flex justify-between\">
           <span>Dimensions:</span>
-          <span className=\"text-slate-200\">{stats.dimensions.width} × {stats.dimensions.height} px</span>
+          <span className=\"text-slate-200\">{stats.dimensions.width} &times; {stats.dimensions.height} px</span>
         </div>
-        <div className=\"flex justify-between\">
+        <div className="flex justify-between">
           <span>CRS:</span>
-          <span className=\"text-slate-200\">{metadata.crs || 'Non-Georeferenced'}</span>
+          <span className="text-slate-200">{metadata.crs || 'Non-Georeferenced'}</span>
         </div>
         {metadata.gsd && (
-          <div className=\"flex justify-between\">
+          <div className="flex justify-between">
             <span>GSD:</span>
-            <span className=\"text-slate-200\">{metadata.gsd.toFixed(2)} m/px</span>
+            <span className="text-slate-200">{metadata.gsd.toFixed(2)} m/px</span>
           </div>
         )}
+        <div className="flex justify-between">
+          <span>Depth Backend:</span>
+          <span className={modelMetadata?.is_fallback ? 'text-amber-400' : 'text-emerald-400'}>
+            {modelMetadata
+              ? (modelMetadata.is_fallback ? 'Structural Fallback' : 'Depth Anything V2 (ONNX)')
+              : 'Unknown'}
+          </span>
+        </div>
       </div>
 
       {/* Export Bar */}

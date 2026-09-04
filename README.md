@@ -64,31 +64,42 @@ cd DepthWizard
 pip install -r requirements.txt
 ```
 
-### 3. Configure Optional OpenRouter Free Key (Optional)
+### 3. Download Depth Model Weights
+```bash
+python scripts/download_models.py
+```
+
+This downloads the Depth Anything V2 Small ONNX model (~95 MB, Apache 2.0 license) from Hugging Face into `backend/cache/`. The download is idempotent — it skips if the file already exists.
+
+> **Note:** If this step is skipped, DepthWizard still runs but uses a structural fallback estimator (heuristic, not a learned model). The frontend and API responses clearly indicate when the fallback is active.
+
+### 4. Configure Optional OpenRouter Free Key (Optional)
 ```bash
 cp .env.example .env
 # Set OPENROUTER_API_KEY=your_free_key (optional)
 ```
 
-### 4. Start DepthWizard Server
+### 5. Start DepthWizard Server
 ```bash
 python -m uvicorn backend.app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-### 5. Open Local Workstation
+### 6. Open Local Workstation
 Open **[http://depthwizard.localhost:8000](http://depthwizard.localhost:8000)** (or `http://127.0.0.1:8000`).
 
 ---
 
 ## 🧪 Geospatial & Mathematical Validation
 
-DepthWizard maintains an automated test suite with **29/29 passing tests**:
+DepthWizard maintains an automated test suite with **34/34 passing tests**:
 
 ```bash
 pytest -v
 ```
 
 **Key Test Validations:**
+- `TestDepthModelONNXPath` ✅ (Validates real ONNX model loads, infers, and reports `is_fallback=False`)
+- `TestDepthModelFallbackPath` ✅ (Validates fallback path activates when weights absent, reports `is_fallback=True`)
 - `test_reconstruction_supervisor_deterministic_fallback` ✅ (Validates structured decision output & graceful fallback)
 - `test_depth_quality_assessment` & `test_flat_depth_quality_penalty` ✅ (Validates depth quality scoring & edge energy)
 - `test_api_returns_supervisor_decision_and_provenance` ✅ (Validates supervisor decision & provenance in API responses)

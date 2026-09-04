@@ -111,6 +111,7 @@ async def convert_2d_to_3d(
             "dimensions": {"width": W, "height": H},
             "depth_strength": depth_strength,
             "mesh_resolution": mesh_resolution,
+            "model_metadata": depth_model.get_metadata(),
             "depth_quality": depth_quality,
             "supervisor_decision": supervisor_eval,
             "mesh": mesh_data,

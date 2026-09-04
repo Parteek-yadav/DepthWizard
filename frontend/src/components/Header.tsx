@@ -1,11 +1,19 @@
-﻿// frontend/src/components/Header.tsx
+// frontend/src/components/Header.tsx
 import React from 'react';
-import { Layers, Globe, Compass, RefreshCw, UploadCloud, Play, Sparkles } from 'lucide-react';
+import { Layers, Globe, Compass, RefreshCw, UploadCloud, Play, Sparkles, Cpu, AlertTriangle } from 'lucide-react';
+
+interface ModelMetadata {
+  model_name: string;
+  backbone: string;
+  is_fallback: boolean;
+  device: string;
+}
 
 interface HeaderProps {
   isGeoreferenced?: boolean;
   isAbsolute?: boolean;
   crs?: string | null;
+  modelMetadata?: ModelMetadata | null;
   onOpenUpload: () => void;
   onSelectDemo: () => void;
   onReset: () => void;
@@ -15,6 +23,7 @@ export const Header: React.FC<HeaderProps> = ({
   isGeoreferenced,
   isAbsolute,
   crs,
+  modelMetadata,
   onOpenUpload,
   onSelectDemo,
   onReset,
@@ -37,21 +46,44 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
       </div>
 
-      {/* Center: Active Pipeline Mode Badge */}
+      {/* Center: Active Pipeline Mode Badge + Model Status Badge */}
       <div className=\"flex items-center space-x-2\">
         {isGeoreferenced !== undefined && (
-          <div className={px-3 py-1 rounded-full text-xs font-semibold flex items-center space-x-1.5 border }>
+          <div className={`px-3 py-1 rounded-full text-xs font-semibold flex items-center space-x-1.5 border `}>
             <Globe className=\"w-3.5 h-3.5\" />
             <span>
               {isAbsolute 
-                ? Mode 2: Georeferenced (Absolute DSM in Meters) 
-                : Mode 1: Non-Georeferenced (Relative rDSM)}
+                ? `Mode 2: Georeferenced (Absolute DSM in Meters)` 
+                : `Mode 1: Non-Georeferenced (Relative rDSM)`}
             </span>
             {crs && (
               <span className=\"text-[10px] opacity-75 font-mono px-1.5 py-0.2 bg-black/40 rounded\">
                 {crs}
               </span>
             )}
+          </div>
+        )}
+
+        {/* Depth Model Status Badge */}
+        {modelMetadata && (
+          <div
+            id=\"depth-model-badge\"
+            className={`px-3 py-1 rounded-full text-xs font-semibold flex items-center space-x-1.5 border transition-colors ${
+              modelMetadata.is_fallback
+                ? 'bg-amber-950/60 text-amber-300 border-amber-700/60'
+                : 'bg-emerald-950/60 text-emerald-300 border-emerald-700/60'
+            }`}
+          >
+            {modelMetadata.is_fallback ? (
+              <AlertTriangle className=\"w-3.5 h-3.5\" />
+            ) : (
+              <Cpu className=\"w-3.5 h-3.5\" />
+            )}
+            <span>
+              {modelMetadata.is_fallback
+                ? 'Structural Fallback (no ONNX weights)'
+                : 'Depth Anything V2 (ONNX)'}
+            </span>
           </div>
         )}
       </div>

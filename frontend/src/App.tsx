@@ -1,4 +1,4 @@
-﻿// frontend/src/App.tsx
+// frontend/src/App.tsx
 import React, { useEffect, useState, useRef } from 'react';
 import { Header } from './components/Header';
 import { PipelineProgress } from './components/PipelineProgress';
@@ -102,6 +102,7 @@ export const App: React.FC = () => {
         isGeoreferenced={data?.is_georeferenced}
         isAbsolute={data?.is_absolute}
         crs={data?.spatial_metadata.crs}
+        modelMetadata={data?.model_metadata}
         onOpenUpload={() => setIsUploadOpen(true)}
         onSelectDemo={() => setIsUploadOpen(true)}
         onReset={() => sceneManagerRef.current?.resetCamera()}
@@ -140,6 +141,7 @@ export const App: React.FC = () => {
               calibration={data.calibration_metrics}
               histogram={data.histogram}
               urls={data.urls}
+              modelMetadata={data.model_metadata}
             />
           </>
         ) : (

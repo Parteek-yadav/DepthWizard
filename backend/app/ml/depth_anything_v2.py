@@ -1,6 +1,7 @@
-﻿# backend/app/ml/depth_anything_v2.py
+# backend/app/ml/depth_anything_v2.py
 import logging
 import os
+import time
 from pathlib import Path
 from typing import Any, Dict, Optional
 import numpy as np
@@ -38,13 +39,23 @@ class DepthAnythingV2Model(BaseDepthModel):
                 self._loaded = True
                 self.is_fallback = False
                 return True
+            else:
+                logger.warning(
+                    f"ONNX weights not found at {onnx_path}. "
+                    f"Run 'python scripts/download_models.py' to download. "
+                    f"Falling back to structural depth estimator."
+                )
         except Exception as e:
             logger.warning(f"ONNX loader warning: {e}. Falling back to robust structural depth solver.")
 
         # Structure-aware geospatial depth solver fallback
         self.is_fallback = True
         self._loaded = True
-        logger.info("Initialized High-Fidelity Multi-Scale Depth Estimator (Adaptive Edge-Gradient Formulation).")
+        logger.info(
+            "Initialized Structural Fallback Depth Estimator "
+            "(heuristic — NOT a learned model). "
+            "is_fallback=True"
+        )
         return True
 
     def predict(self, rgb_image: np.ndarray) -> np.ndarray:
@@ -59,26 +70,35 @@ class DepthAnythingV2Model(BaseDepthModel):
 
         if self.session is not None:
             try:
+                t0 = time.time()
+
                 # Preprocess for Depth Anything V2 (518x518 standard input)
-                img = Image.fromarray(rgb_image).resize((518, 518), Image.BILINEAR)
+                # Official preprocessor: resample=3 (BICUBIC), rescale /255, ImageNet normalize
+                img = Image.fromarray(rgb_image).resize((518, 518), Image.BICUBIC)
                 img_data = np.array(img).astype(np.float32) / 255.0
                 # Normalize (ImageNet mean & std)
                 mean = np.array([0.485, 0.456, 0.406], dtype=np.float32)
                 std = np.array([0.229, 0.224, 0.225], dtype=np.float32)
                 img_data = (img_data - mean) / std
-                img_data = np.transpose(img_data, (2, 0, 1))[np.newaxis, ...]
+                img_data = np.transpose(img_data, (2, 0, 1))[np.newaxis, ...].astype(np.float32)
 
                 input_name = self.session.get_inputs()[0].name
                 raw_depth = self.session.run(None, {input_name: img_data})[0].squeeze()
-                
-                # Resize back to original dimensions
-                depth_img = Image.fromarray(raw_depth).resize((W, H), Image.BILINEAR)
+
+                # Resize back to original dimensions using PIL mode 'F' (float32)
+                depth_img = Image.fromarray(raw_depth, mode='F').resize((W, H), Image.BILINEAR)
                 depth = np.array(depth_img, dtype=np.float32)
 
                 # Normalize to [0, 1]
                 d_min, d_max = depth.min(), depth.max()
                 if d_max > d_min:
                     depth = (depth - d_min) / (d_max - d_min)
+
+                elapsed_ms = (time.time() - t0) * 1000
+                logger.info(
+                    f"ONNX inference complete: {elapsed_ms:.0f}ms, "
+                    f"is_fallback=False, output_shape={depth.shape}"
+                )
                 return depth.astype(np.float32)
             except Exception as e:
                 logger.error(f"Inference error with ONNX session: {e}. Executing structural solver.")
@@ -117,7 +137,7 @@ class DepthAnythingV2Model(BaseDepthModel):
     def get_metadata(self) -> Dict[str, Any]:
         return {
             "model_name": self.model_name,
-            "backbone": "Depth-Anything-V2-Small / Structural Photogrammetric Solver",
+            "backbone": "Depth-Anything-V2-Small (ONNX)" if not self.is_fallback else "Structural Fallback Estimator",
             "source": "Li et al., 'Depth Anything V2', 2024 (Apache 2.0 / MIT)",
             "device": self.device,
             "is_fallback": self.is_fallback,
