@@ -1,11 +1,16 @@
 # backend/app/api/routes_geo.py
+import json
+import logging
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
 from typing import Any, Dict, List, Optional
 
+from backend.app.config import OUTPUTS_DIR
 from backend.app.geospatial.geo_fetcher import GeoFetcher
 from backend.app.processing.pipeline import PipelineOrchestrator
 from backend.app.ml.ai_supervisor import ReconstructionSupervisor
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/geo", tags=["Geographic Discovery & Selection"])
 
@@ -74,7 +79,9 @@ async def process_selected_area(payload: ProcessSelectedRequest):
             image_path=area_info["image_path"],
             dem_path=area_info["dem_path"],
             mesh_resolution=payload.mesh_resolution,
-            height_exaggeration=payload.height_exaggeration
+            height_exaggeration=payload.height_exaggeration,
+            spatial_bounds_meters=area_info["spatial_bounds_meters"],
+            texture_path=area_info.get("texture_path")
         )
 
         # AI Supervisor analysis
@@ -121,6 +128,21 @@ async def process_selected_rect_area(payload: ProcessSelectedRectRequest):
     and returns continuous 3D terrain surface with real metric scale.
     """
     try:
+        # Check pre-warmed disk cache for curated demo locations
+        from backend.app.api.routes_demo import CURATED_DEMO_LOCATIONS
+        for loc in CURATED_DEMO_LOCATIONS:
+            if (
+                abs(payload.min_lon - loc["min_lon"]) < 0.003
+                and abs(payload.min_lat - loc["min_lat"]) < 0.003
+                and abs(payload.max_lon - loc["max_lon"]) < 0.003
+                and abs(payload.max_lat - loc["max_lat"]) < 0.003
+            ):
+                disk_report = OUTPUTS_DIR / loc["id"] / "report.json"
+                if disk_report.exists():
+                    logger.info("Serving pre-warmed disk cache for %s (%s)", loc["name"], loc["id"])
+                    with open(disk_report, "r", encoding="utf-8") as f:
+                        return json.load(f)
+
         area_info = GeoFetcher.generate_rect_area_dataset(
             min_lon=payload.min_lon,
             min_lat=payload.min_lat,
@@ -134,7 +156,9 @@ async def process_selected_rect_area(payload: ProcessSelectedRectRequest):
             image_path=area_info["image_path"],
             dem_path=area_info["dem_path"],
             mesh_resolution=payload.mesh_resolution,
-            height_exaggeration=payload.height_exaggeration
+            height_exaggeration=payload.height_exaggeration,
+            spatial_bounds_meters=area_info["spatial_bounds_meters"],
+            texture_path=area_info.get("texture_path")
         )
 
         # AI Supervisor analysis

@@ -150,6 +150,18 @@ def main():
 
     md_lines.extend([
         "",
+        "> **Note on calibration quality:** These validation metrics are evaluated against bundled demo data "
+        "(`data/demo/himalaya_optical.tif` and `data/demo/himalaya_srtm_dem.tif`) where the optical satellite "
+        "imagery is synthetically rendered with physical hillshading and altitude-correlated luminance matching "
+        "the reference DEM. This controlled pairing provides an honest benchmark showing that when optical depth "
+        "cues physically align with topography, Depth Anything V2 achieves high linear correlation (Pearson r > 0.94, "
+        "R² > 0.89) and the Huber M-estimator successfully recovers metric scale. For live satellite presentations, "
+        "judges should be informed that Demo Mode operates on this controlled, reproducible dataset rather than "
+        "unpredictable live over-the-air feeds.",
+    ])
+
+    md_lines.extend([
+        "",
         "---",
         "",
         "## How to Reproduce",

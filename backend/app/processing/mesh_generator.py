@@ -79,8 +79,16 @@ class MeshGenerator:
         if spatial_bounds_meters:
             min_x, min_y, max_x, max_y = spatial_bounds_meters
         else:
-            min_x, max_x = -50.0, 50.0
-            min_y, max_y = -50.0, 50.0
+            # Preserve authentic visual aspect ratio (W / H) for uploaded photos and non-georeferenced imagery
+            aspect = float(W) / float(max(H, 1))
+            if aspect >= 1.0:
+                span_x = 100.0
+                span_y = 100.0 / aspect
+            else:
+                span_y = 100.0
+                span_x = 100.0 * aspect
+            min_x, max_x = -span_x / 2.0, span_x / 2.0
+            min_y, max_y = -span_y / 2.0, span_y / 2.0
 
         x_coords = np.linspace(min_x, max_x, grid_w, dtype=np.float32)
         y_coords = np.linspace(max_y, min_y, grid_h, dtype=np.float32) # North is index 0

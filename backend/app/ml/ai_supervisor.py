@@ -9,6 +9,7 @@ from typing import Any, Dict, List, Optional
 import numpy as np
 from PIL import Image
 import io
+from backend.app.config import DEMO_MODE
 
 logger = logging.getLogger(__name__)
 
@@ -79,6 +80,11 @@ class ReconstructionSupervisor:
                 "Apply area-weighted smooth normal vectors"
             ]
         }
+
+        # In DEMO_MODE, bypass OpenRouter network call completely for deterministic consistency
+        if DEMO_MODE:
+            logger.info("DEMO_MODE=True: Skipping OpenRouter network call and returning deterministic supervisor decision.")
+            return baseline_decision
 
         api_key = ReconstructionSupervisor.get_api_key()
         if not api_key:

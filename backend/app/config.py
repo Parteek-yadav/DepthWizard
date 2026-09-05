@@ -32,3 +32,6 @@ MAX_UPLOAD_SIZE_MB = int(os.getenv("MAX_UPLOAD_SIZE_MB", "100"))
 DEFAULT_MESH_RESOLUTION = int(os.getenv("DEFAULT_MESH_RESOLUTION", "256"))
 MAX_MESH_RESOLUTION = 512
 DEVICE = os.getenv("DEVICE", "auto") # auto, cuda, cpu
+
+# Presentation Demo Mode Flag
+DEMO_MODE = os.getenv("DEMO_MODE", "false").lower() in ("true", "1", "yes")

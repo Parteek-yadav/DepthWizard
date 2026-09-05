@@ -1,4 +1,4 @@
-﻿# backend/app/processing/pipeline.py
+# backend/app/processing/pipeline.py
 import logging
 import uuid
 from pathlib import Path
@@ -21,15 +21,29 @@ logger = logging.getLogger(__name__)
 class PipelineOrchestrator:
     """End-to-End Orchestrator for DepthWizard Single-View Height Estimation."""
 
-    @staticmethod
+    @classmethod
     def process(
+        cls,
         image_path: str,
         dem_path: Optional[str] = None,
         gcps: Optional[List[Dict[str, Any]]] = None,
         mesh_resolution: int = 128,
-        height_exaggeration: float = 1.0
+        height_exaggeration: float = 1.0,
+        task_id: Optional[str] = None,
+        spatial_bounds_meters: Optional[Tuple[float, float, float, float]] = None,
+        texture_path: Optional[str] = None
     ) -> Dict[str, Any]:
-        task_id = str(uuid.uuid4())[:8]
+        """
+        Executes end-to-end processing pipeline:
+        1. Reads and validates optical image.
+        2. Infers monocular relative depth via configured Depth Anything V2 model.
+        3. Calibrates relative depth against reference DEM or GCPs.
+        4. Generates continuous 3D triangle mesh with analytical surface normals.
+        5. Exports analysis report, GeoTIFF DSM, OBJ mesh, and previews.
+        """
+        if task_id is None:
+            task_id = f"task_{uuid.uuid4().hex[:8]}"
+
         task_dir = OUTPUTS_DIR / task_id
         task_dir.mkdir(parents=True, exist_ok=True)
 
@@ -37,9 +51,17 @@ class PipelineOrchestrator:
         rgb_img, spatial_meta = GeoTIFFHandler.read_rgb(image_path)
         H, W, _ = rgb_img.shape
 
-        # Save copy of source RGB texture for Three.js
+        # Save copy of source RGB texture for Three.js (prefer high-fidelity texture if available)
         rgb_texture_path = task_dir / "texture.png"
-        Image.fromarray(rgb_img).save(str(rgb_texture_path), format="PNG")
+        if texture_path and Path(texture_path).exists():
+            try:
+                tex_img, _ = GeoTIFFHandler.read_rgb(texture_path)
+                Image.fromarray(tex_img).save(str(rgb_texture_path), format="PNG")
+            except Exception as e:
+                logger.warning("Could not read custom texture_path %s: %s. Falling back to optical image.", texture_path, e)
+                Image.fromarray(rgb_img).save(str(rgb_texture_path), format="PNG")
+        else:
+            Image.fromarray(rgb_img).save(str(rgb_texture_path), format="PNG")
 
         # 2. Monocular depth inference
         depth_model = ModelManager.get_instance().get_depth_model()
@@ -99,7 +121,8 @@ class PipelineOrchestrator:
         mesh_data = MeshGenerator.generate_terrain_mesh(
             elevation_2d=elevation_data,
             target_grid_size=mesh_resolution,
-            height_exaggeration=height_exaggeration
+            height_exaggeration=height_exaggeration,
+            spatial_bounds_meters=spatial_bounds_meters
         )
 
         # Export OBJ

@@ -102,6 +102,26 @@ async def convert_2d_to_3d(
         obj_path = task_dir / "model_3d.obj"
         MeshGenerator.export_obj(mesh_data, str(obj_path))
 
+        # Compute Depth Distribution Histogram
+        hist_counts, bin_edges = np.histogram(depth_rel, bins=20)
+        histogram_data = [
+            {"bin_start": round(float(bin_edges[i]), 3), "bin_end": round(float(bin_edges[i+1]), 3), "count": int(hist_counts[i])}
+            for i in range(len(hist_counts))
+        ]
+
+        summary_stats = {
+            "min_elevation": round(float(np.min(depth_rel)), 3),
+            "max_elevation": round(float(np.max(depth_rel)), 3),
+            "mean_elevation": round(float(np.mean(depth_rel)), 3),
+            "std_elevation": round(float(np.std(depth_rel)), 3),
+            "elevation_unit": "relative",
+            "dimensions": {"width": W, "height": H},
+            "is_georeferenced": False,
+            "is_absolute": False
+        }
+
+        source_name = file.filename if file and file.filename else (Path(image_path).name if image_path else "2D Image")
+
         return {
             "task_id": f"img3d_{task_id}",
             "status": "success",
@@ -115,9 +135,20 @@ async def convert_2d_to_3d(
             "depth_quality": depth_quality,
             "supervisor_decision": supervisor_eval,
             "mesh": mesh_data,
+            "statistics": summary_stats,
+            "histogram": histogram_data,
+            "buildings": [],
+            "geographic_context": {
+                "name": f"Photo: {source_name}",
+                "projected_crs": "Relative / Single-View Coordinate Frame",
+                "dimensions_meters": {"width": W, "height": H},
+                "approx_area_km2": round((W * H) / 1000000.0, 3)
+            },
             "urls": {
                 "texture": f"/outputs/img3d_{task_id}/texture.png",
                 "depth_map": f"/outputs/img3d_{task_id}/depth_map.png",
+                "relative_depth": f"/outputs/img3d_{task_id}/depth_map.png",
+                "dsm_preview": f"/outputs/img3d_{task_id}/depth_map.png",
                 "obj_mesh": f"/outputs/img3d_{task_id}/model_3d.obj"
             }
         }

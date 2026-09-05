@@ -106,6 +106,12 @@
         <i data-lucide="shield-check" class="w-3 h-3 text-emerald-400"></i>
         <span id="confidenceTag">CONFIDENCE: HIGH</span>
       </div>
+
+      <!-- Presentation Demo Mode Badge -->
+      <div class="hidden px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider flex items-center space-x-1.5 border bg-amber-950/80 text-amber-300 border-amber-600/70 shadow-sm" id="badgeDemoMode" title="Controlled Demo Mode: Deterministic supervisor and pre-warmed offline data active (Not live satellite feed)">
+        <span class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping"></span>
+        <span>DEMO MODE</span>
+      </div>
     </div>
 
     <!-- Global Top Actions -->
@@ -492,34 +498,6 @@
     </div>
   </div>
 
-  <!-- B. 2D Photo to 3D Modal -->
-  <div id="modalImg2D3D" class="hidden fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4">
-    <div class="bg-space-900 border border-purple-800/60 rounded-xl max-w-md w-full shadow-2xl p-4 text-slate-200 space-y-3">
-      <div class="flex justify-between items-center border-b border-space-800 pb-1.5">
-        <h2 class="font-bold text-sm text-white">Convert Any 2D Image to 3D</h2>
-        <button id="btnCloseImg2D3D" class="text-slate-400 hover:text-white"><i data-lucide="x" class="w-4 h-4"></i></button>
-      </div>
-      <div>
-        <label class="block text-[11px] font-semibold text-slate-300 mb-1">Select Photo (PNG / JPG)</label>
-        <input type="file" id="inputPhoto2D" accept=".png,.jpg,.jpeg,.webp" class="w-full bg-space-950 border border-space-800 rounded p-1.5 text-xs text-slate-300" />
-      </div>
-      <div class="grid grid-cols-2 gap-2">
-        <div>
-          <label class="block text-[10px] text-slate-300">Depth Strength: <b id="valDepthStrength" class="text-purple-400">1.2x</b></label>
-          <input id="sliderDepthStrength" type="range" min="0.2" max="3.0" step="0.1" value="1.2" class="w-full accent-purple-400 h-1 bg-space-800 rounded" />
-        </div>
-        <div>
-          <label class="block text-[10px] text-slate-300">Resolution</label>
-          <select id="selectMeshRes2D" class="w-full bg-space-950 border border-space-800 rounded p-1 text-[11px] text-slate-200">
-            <option value="64">64 × 64</option>
-            <option value="128" selected>128 × 128</option>
-            <option value="256">256 × 256</option>
-          </select>
-        </div>
-      </div>
-      <button id="btnConvert2DTo3D" class="w-full py-1.5 bg-purple-600 hover:bg-purple-500 text-white font-semibold rounded text-xs">Generate 3D Model</button>
-    </div>
-  </div>
 
   <!-- C. Demo Modal -->
   <div id="modalDemo" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
@@ -536,18 +514,112 @@
   <div id="modalUpload" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
     <div class="bg-space-900 border border-space-800 rounded-xl max-w-md w-full shadow-2xl p-4 text-slate-200 space-y-3">
       <div class="flex justify-between items-center border-b border-space-800 pb-1.5">
-        <h2 class="font-bold text-sm text-white">Upload Satellite Raster</h2>
-        <button id="btnCloseUpload" class="text-slate-400 hover:text-white"><i data-lucide="x" class="w-4 h-4"></i></button>
+        <div class="flex items-center space-x-2">
+          <i data-lucide="upload-cloud" class="w-4 h-4 text-isro-sky"></i>
+          <h2 class="font-bold text-sm text-white">Upload Satellite Raster / DEM</h2>
+        </div>
+        <button id="btnCloseUpload" class="text-slate-400 hover:text-white p-1 rounded hover:bg-space-800"><i data-lucide="x" class="w-4 h-4"></i></button>
       </div>
       <div>
         <label class="block text-[11px] font-semibold text-slate-300 mb-1">Optical Raster (GeoTIFF / PNG / JPG)</label>
-        <input type="file" id="inputFileImage" accept=".tif,.tiff,.png,.jpg,.jpeg" class="w-full bg-space-950 border border-space-800 rounded p-1.5 text-xs text-slate-300" />
+        <input type="file" id="inputFileImage" accept=".tif,.tiff,.png,.jpg,.jpeg" class="w-full bg-space-950 border border-space-800 rounded p-1.5 text-xs text-slate-300 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:bg-sky-900/60 file:text-sky-200 hover:file:bg-sky-800 cursor-pointer" />
       </div>
       <div>
-        <label class="block text-[11px] font-semibold text-slate-300 mb-1">Reference DEM (Optional for Calibration)</label>
-        <input type="file" id="inputFileDem" accept=".tif,.tiff" class="w-full bg-space-950 border border-space-800 rounded p-1.5 text-xs text-slate-300" />
+        <label class="block text-[11px] font-semibold text-slate-300 mb-1">Reference DEM (Optional GeoTIFF for Metric Calibration)</label>
+        <input type="file" id="inputFileDem" accept=".tif,.tiff" class="w-full bg-space-950 border border-space-800 rounded p-1.5 text-xs text-slate-300 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:bg-sky-900/60 file:text-sky-200 hover:file:bg-sky-800 cursor-pointer" />
       </div>
-      <button id="btnSubmitUpload" class="w-full py-1.5 bg-isro-blue hover:bg-sky-600 text-white font-semibold rounded text-xs">Process</button>
+      <div class="grid grid-cols-2 gap-2">
+        <div>
+          <label class="block text-[11px] font-semibold text-slate-300 mb-1">Mesh Resolution</label>
+          <select id="selectMeshResUpload" class="w-full bg-space-950 border border-space-800 rounded p-1.5 text-xs text-slate-300">
+            <option value="64">64 &times; 64</option>
+            <option value="128" selected>128 &times; 128</option>
+            <option value="256">256 &times; 256</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-[11px] font-semibold text-slate-300 mb-1">Height Exaggeration</label>
+          <select id="selectExaggUpload" class="w-full bg-space-950 border border-space-800 rounded p-1.5 text-xs text-slate-300">
+            <option value="0.5">0.5&times;</option>
+            <option value="1.0" selected>1.0&times; (1:1)</option>
+            <option value="1.5">1.5&times;</option>
+            <option value="2.0">2.0&times;</option>
+          </select>
+        </div>
+      </div>
+      <button id="btnSubmitUpload" class="w-full py-2 bg-isro-blue hover:bg-sky-600 text-white font-semibold rounded text-xs transition-all flex items-center justify-center space-x-1.5">
+        <i data-lucide="play" class="w-3.5 h-3.5"></i>
+        <span id="uploadSubmitText">Process & Generate 3D Terrain</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- D2. 2D Photo to 3D Conversion Modal -->
+  <div id="modalImg2D3D" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-space-900 border border-purple-800/60 rounded-xl max-w-lg w-full shadow-2xl p-5 text-slate-200 space-y-4">
+      <div class="flex justify-between items-center border-b border-space-800 pb-2">
+        <div class="flex items-center space-x-2">
+          <div class="p-1.5 rounded-lg bg-purple-950 border border-purple-700/60 text-purple-400">
+            <i data-lucide="sparkles" class="w-4 h-4"></i>
+          </div>
+          <div>
+            <h2 class="font-bold text-sm text-white">2D Image &rarr; 3D Continuous Model</h2>
+            <p class="text-[11px] text-purple-300">Single-View Monocular Depth Inference (Depth Anything V2)</p>
+          </div>
+        </div>
+        <button id="btnCloseImg2D3D" class="text-slate-400 hover:text-white p-1 rounded hover:bg-space-800"><i data-lucide="x" class="w-4 h-4"></i></button>
+      </div>
+
+      <div class="space-y-3">
+        <div>
+          <label class="block text-[11px] font-semibold text-slate-300 mb-1">Select Any 2D Photo / Image (PNG, JPG, WEBP)</label>
+          <input type="file" id="inputPhoto2D" accept=".png,.jpg,.jpeg,.webp,.tif,.tiff" class="w-full bg-space-950 border border-space-800 rounded p-2 text-xs text-slate-300 file:mr-2 file:py-1 file:px-2.5 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-purple-900/60 file:text-purple-200 hover:file:bg-purple-800 cursor-pointer" />
+        </div>
+
+        <!-- Image preview container -->
+        <div id="photo2DPreviewContainer" class="hidden relative rounded-lg border border-space-800 overflow-hidden bg-space-950 max-h-40 flex items-center justify-center">
+          <img id="photo2DPreviewImg" class="max-h-40 object-contain w-auto rounded" alt="Preview" />
+          <div id="photo2DInfo" class="absolute bottom-1 right-2 text-[10px] bg-black/70 px-1.5 py-0.5 rounded text-slate-300 font-mono"></div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <div class="flex justify-between items-center mb-1">
+              <label class="text-[11px] font-semibold text-slate-300">Depth Relief</label>
+              <span id="depthStrengthVal" class="text-[11px] font-mono text-purple-300">1.5x</span>
+            </div>
+            <input type="range" id="sliderDepthStrength" min="0.5" max="4.0" step="0.1" value="1.5" class="w-full accent-purple-500 cursor-pointer" />
+          </div>
+          <div>
+            <label class="block text-[11px] font-semibold text-slate-300 mb-1">Mesh Resolution</label>
+            <select id="selectMeshRes2D" class="w-full bg-space-950 border border-space-800 rounded p-1.5 text-xs text-slate-300">
+              <option value="64">Fast (64 &times; 64)</option>
+              <option value="128" selected>Standard (128 &times; 128)</option>
+              <option value="256">High Precision (256 &times; 256)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Preset Sample Buttons for Quick Demo -->
+        <div>
+          <label class="block text-[10px] uppercase font-bold tracking-wider text-slate-400 mb-1.5">Or Try Curated Sample Photos</label>
+          <div class="grid grid-cols-2 gap-2">
+            <button type="button" class="btn-sample-photo px-2.5 py-1.5 rounded bg-space-950 hover:bg-space-800 border border-space-800 hover:border-purple-600/50 text-left text-xs transition-all flex items-center space-x-2" data-sample="himalaya">
+              <span class="w-2 h-2 rounded-full bg-sky-400"></span>
+              <span class="text-slate-200">Himalaya Mountain Ridge</span>
+            </button>
+            <button type="button" class="btn-sample-photo px-2.5 py-1.5 rounded bg-space-950 hover:bg-space-800 border border-space-800 hover:border-purple-600/50 text-left text-xs transition-all flex items-center space-x-2" data-sample="drone">
+              <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+              <span class="text-slate-200">Coastal Drone Aerial</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <button id="btnConvert2DTo3D" class="w-full py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-semibold rounded text-xs shadow-lg transition-all flex items-center justify-center space-x-1.5">
+        <i data-lucide="box" class="w-4 h-4"></i>
+        <span id="convert2DText">Generate 3D Continuous Model</span>
+      </button>
     </div>
   </div>
 
@@ -586,9 +658,9 @@
 
       scene = new THREE.Scene();
       scene.background = new THREE.Color(0x060913);
-      scene.fog = new THREE.FogExp2(0x0a1020, 0.0018);
+      scene.fog = new THREE.FogExp2(0x0a1020, 0.00018);
 
-      camera = new THREE.PerspectiveCamera(48, w / h, 0.5, 4000);
+      camera = new THREE.PerspectiveCamera(48, w / h, 0.5, 8000);
       updateOrbitCam();
 
       renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
@@ -600,20 +672,20 @@
       renderer.toneMappingExposure = 1.15;
       container.appendChild(renderer.domElement);
 
-      hemiLight = new THREE.HemisphereLight(0xe2e8f0, 0x1e293b, 0.9);
+      hemiLight = new THREE.HemisphereLight(0xffffff, 0x1e293b, 0.85);
       scene.add(hemiLight);
 
-      dirLight = new THREE.DirectionalLight(0xfffaed, 1.4);
-      dirLight.position.set(70, 110, 60);
+      dirLight = new THREE.DirectionalLight(0xfffaed, 1.15);
+      dirLight.position.set(700, 1100, 600);
       dirLight.castShadow = true;
       dirLight.shadow.mapSize.width = 2048;
       dirLight.shadow.mapSize.height = 2048;
       dirLight.shadow.camera.near = 10;
-      dirLight.shadow.camera.far = 400;
-      dirLight.shadow.camera.left = -90;
-      dirLight.shadow.camera.right = 90;
-      dirLight.shadow.camera.top = 90;
-      dirLight.shadow.camera.bottom = -90;
+      dirLight.shadow.camera.far = 3500;
+      dirLight.shadow.camera.left = -1200;
+      dirLight.shadow.camera.right = 1200;
+      dirLight.shadow.camera.top = 1200;
+      dirLight.shadow.camera.bottom = -1200;
       dirLight.shadow.bias = -0.0004;
       scene.add(dirLight);
 
@@ -642,6 +714,21 @@
       orbitPhi = Math.PI / 4;
       orbitTheta = Math.PI / 4;
       updateOrbitCam();
+
+      if (dirLight) {
+        dirLight.position.set(maxSpan * 0.45, maxSpan * 1.3, maxSpan * 0.45);
+        dirLight.shadow.camera.left = -maxSpan * 1.3;
+        dirLight.shadow.camera.right = maxSpan * 1.3;
+        dirLight.shadow.camera.top = maxSpan * 1.3;
+        dirLight.shadow.camera.bottom = -maxSpan * 1.3;
+        dirLight.shadow.camera.near = 10;
+        dirLight.shadow.camera.far = maxSpan * 4.0;
+        dirLight.shadow.camera.updateProjectionMatrix();
+      }
+      if (camera) {
+        camera.far = Math.max(8000, maxSpan * 6.0);
+        camera.updateProjectionMatrix();
+      }
     }
 
     function setup3DEvents(container) {
@@ -771,7 +858,7 @@
       });
 
       terrainMesh = new THREE.Mesh(geom, mat);
-      terrainMesh.castShadow = true;
+      terrainMesh.castShadow = false; // Ground plane receives shadows from buildings without self-shadow artifacts
       terrainMesh.receiveShadow = true;
       scene.add(terrainMesh);
 
@@ -798,9 +885,9 @@
 
         // Construct 2D shape directly from authentic OpenStreetMap polygon vertices
         const shape = new THREE.Shape();
-        shape.moveTo(poly[0][0], -poly[0][1]);
+        shape.moveTo(poly[0][0], poly[0][1]);
         for (let i = 1; i < poly.length; i++) {
-          shape.lineTo(poly[i][0], -poly[i][1]);
+          shape.lineTo(poly[i][0], poly[i][1]);
         }
         shape.closePath();
 
@@ -810,19 +897,37 @@
         };
 
         const geom = new THREE.ExtrudeGeometry(shape, extrudeSettings);
-        geom.rotateX(Math.PI / 2);
+        geom.rotateX(-Math.PI / 2); // Extrude upwards (+Y) above terrain surface
 
-        const mat = new THREE.MeshStandardMaterial({
-          color: new THREE.Color(bldg.material.facade_color),
+        // Differentiated roof and facade materials
+        const roofMat = new THREE.MeshStandardMaterial({
+          color: new THREE.Color(bldg.material.roof_color || '#8a4b38'),
+          roughness: 0.65,
+          metalness: 0.12,
+          side: THREE.DoubleSide
+        });
+        const facadeMat = new THREE.MeshStandardMaterial({
+          color: new THREE.Color(bldg.material.facade_color || '#d8cfc4'),
           roughness: bldg.material.roughness || 0.75,
-          metalness: bldg.material.metalness || 0.1,
+          metalness: bldg.material.metalness || 0.10,
           side: THREE.DoubleSide
         });
 
-        const mesh = new THREE.Mesh(geom, mat);
+        // ExtrudeGeometry materials: [roofMat (caps), facadeMat (sides)]
+        const mesh = new THREE.Mesh(geom, [roofMat, facadeMat]);
         mesh.position.set(0, terrainBaseY, 0);
         mesh.castShadow = true;
         mesh.receiveShadow = true;
+
+        // Architectural edge outlines for crisp GIS / CAD Digital Twin look
+        const edges = new THREE.EdgesGeometry(geom, 25);
+        const lineMat = new THREE.LineBasicMaterial({
+          color: 0x1e293b,
+          transparent: true,
+          opacity: 0.70
+        });
+        const edgeLine = new THREE.LineSegments(edges, lineMat);
+        mesh.add(edgeLine);
 
         buildingGroup.add(mesh);
       });
@@ -832,20 +937,22 @@
       if (!terrainMesh || !currentData) return 0;
       const baseVerts = currentData.mesh.vertices;
       const b = currentData.mesh.bounds_meters || { min_x: -50, max_x: 50, min_z: -50, max_z: 50 };
-      const spanX = b.max_x - b.min_x;
-      const spanZ = b.max_z - b.min_z;
+      const spanX = (b.max_x - b.min_x) || 1.0;
+      const spanZ = (b.max_z - b.min_z) || 1.0;
       const gridW = currentData.mesh.grid_size[0];
       const gridH = currentData.mesh.grid_size[1];
 
+      // In Three.js coordinate convention, vz = -z_northing
+      const threeZ = -z;
       const u = Math.max(0, Math.min(1, (x - b.min_x) / spanX));
-      const v = Math.max(0, Math.min(1, (z - b.min_z) / spanZ));
+      const v = Math.max(0, Math.min(1, (threeZ - b.min_z) / spanZ));
 
       const col = Math.floor(u * (gridW - 1));
       const row = Math.floor(v * (gridH - 1));
       const idx = (row * gridW + col) * 3;
 
       if (idx >= 0 && idx < baseVerts.length) {
-        const exagg = parseFloat(document.getElementById('sliderExagg').value);
+        const exagg = parseFloat(document.getElementById('sliderExagg').value) || 1.0;
         return baseVerts[idx + 1] * exagg;
       }
       return 0;
@@ -938,7 +1045,113 @@
       document.getElementById('selAreaKm2').innerText = `${areaKm2} km²`;
     }
 
-    // 4. End-to-End Pipeline Execution with AI Supervisor Data Handling
+    // 4. End-to-End Pipeline Result Presentation
+    function displayPipelineResult(result, isPhoto2D = false) {
+      currentData = result;
+      loadTerrainGeometry(result.mesh, result.urls.texture, result.buildings || []);
+
+      if (isPhoto2D) {
+        document.getElementById('modeLabel').innerText = 'Mode 1: Monocular Relative (Depth Anything V2 2D-3D)';
+        document.getElementById('crsLabel').innerText = 'Relative Camera Frame (Non-georeferenced)';
+      } else if (result.is_georeferenced || result.geographic_context?.projected_crs) {
+        document.getElementById('modeLabel').innerText = 'Mode 2: Georeferenced (Calibrated Metric DSM)';
+        document.getElementById('crsLabel').innerText = result.geographic_context?.projected_crs || result.spatial_metadata?.crs || 'EPSG:32643';
+      } else {
+        document.getElementById('modeLabel').innerText = 'Mode 1: Non-georeferenced Relative Elevation';
+        document.getElementById('crsLabel').innerText = 'Local Arbitrary Frame';
+      }
+
+      if (result.statistics) {
+        const unit = result.statistics.elevation_unit === 'meters' ? ' m' : (isPhoto2D ? ' (rel)' : ' m');
+        document.getElementById('statMin').innerText = (result.statistics.min_elevation !== undefined ? result.statistics.min_elevation : 0) + unit;
+        document.getElementById('statMean').innerText = (result.statistics.mean_elevation !== undefined ? result.statistics.mean_elevation : 0.5) + unit;
+        document.getElementById('statMax').innerText = (result.statistics.max_elevation !== undefined ? result.statistics.max_elevation : 1) + unit;
+      }
+      if (result.mesh && result.mesh.vertex_count) {
+        document.getElementById('vertTag').innerText = `Vertices: ${result.mesh.vertex_count.toLocaleString()}`;
+      }
+
+      // AI Supervisor & Confidence updates
+      if (result.supervisor_decision) {
+        const sup = result.supervisor_decision;
+        const conf = sup.data_confidence || 'HIGH';
+        document.getElementById('confidenceTag').innerText = `CONFIDENCE: ${conf}`;
+        document.getElementById('inspConf').innerText = conf;
+        document.getElementById('inspComp').innerText = `${sup.terrain_complexity || 0.4} / 1.0`;
+        document.getElementById('inspLod').innerText = sup.recommended_terrain_lod || 'HIGH';
+      } else if (isPhoto2D) {
+        document.getElementById('confidenceTag').innerText = 'CONFIDENCE: MONOCULAR';
+        document.getElementById('inspConf').innerText = 'MONOCULAR';
+        document.getElementById('inspComp').innerText = 'Depth Anything V2';
+        document.getElementById('inspLod').innerText = 'HIGH';
+      } else {
+        document.getElementById('confidenceTag').innerText = 'CONFIDENCE: HIGH';
+        document.getElementById('inspConf').innerText = 'HIGH';
+        document.getElementById('inspComp').innerText = '0.40 / 1.0';
+        document.getElementById('inspLod').innerText = 'HIGH';
+      }
+
+      // Inspector updates
+      const name = result.geographic_context?.name || (isPhoto2D ? '2D Photo Model' : (result.spatial_metadata?.filename || 'Terrain Dataset'));
+      document.getElementById('inspLoc').innerText = name;
+      document.getElementById('inspCrs').innerText = result.geographic_context?.projected_crs || result.spatial_metadata?.crs || (isPhoto2D ? 'Local Single-View Frame' : 'Local Frame');
+      
+      const dims = result.geographic_context?.dimensions_meters || (result.statistics?.dimensions ? { width: result.statistics.dimensions.width, height: result.statistics.dimensions.height } : { width: 1000, height: 1000 });
+      if (isPhoto2D) {
+        document.getElementById('inspDim').innerText = `${dims.width} × ${dims.height} px`;
+        document.getElementById('inspArea').innerText = 'Single Photo Frame';
+      } else {
+        document.getElementById('inspDim').innerText = `${(dims.width / 1000).toFixed(2)} km × ${(dims.height / 1000).toFixed(2)} km`;
+        document.getElementById('inspArea').innerText = `${result.geographic_context?.approx_area_km2 || ( (dims.width*dims.height)/1e6 ).toFixed(2)} km²`;
+      }
+      document.getElementById('inspBldgs').innerText = `${result.buildings?.length || 0} Polygons`;
+      document.getElementById('inspVerts').innerText = result.mesh?.vertex_count ? result.mesh.vertex_count.toLocaleString() : '0';
+
+      if (result.calibration_metrics) {
+        document.getElementById('calibMae').innerText = result.calibration_metrics.mae_meters + ' m';
+        document.getElementById('calibRmse').innerText = result.calibration_metrics.rmse_meters + ' m';
+        document.getElementById('calibR').innerText = result.calibration_metrics.pearson_r;
+        document.getElementById('calibR2').innerText = result.calibration_metrics.r2_score;
+      } else {
+        document.getElementById('calibMae').innerText = 'N/A';
+        document.getElementById('calibRmse').innerText = 'N/A';
+        document.getElementById('calibR').innerText = 'N/A';
+        document.getElementById('calibR2').innerText = 'N/A';
+      }
+
+      const histContainer = document.getElementById('histBars');
+      histContainer.innerHTML = '';
+      if (result.histogram && result.histogram.length > 0) {
+        const maxCount = Math.max(...result.histogram.map(h => h.count), 1);
+        result.histogram.forEach(bin => {
+          const bar = document.createElement('div');
+          const pct = Math.max((bin.count / maxCount) * 100, 8);
+          bar.className = 'flex-1 bg-gradient-to-t from-isro-blue to-isro-sky rounded-t';
+          bar.style.height = pct + '%';
+          histContainer.appendChild(bar);
+        });
+      }
+
+      // Exports and preview images
+      if (result.urls) {
+        if (result.urls.geotiff_dsm) {
+          document.getElementById('btnExportTif').href = result.urls.geotiff_dsm;
+          document.getElementById('btnExportTif').classList.remove('opacity-50', 'pointer-events-none');
+        } else {
+          document.getElementById('btnExportTif').href = '#';
+          document.getElementById('btnExportTif').classList.add('opacity-50', 'pointer-events-none');
+        }
+        document.getElementById('btnExportObj').href = result.urls.obj_mesh || '#';
+        document.getElementById('splitRgb').src = result.urls.texture || '';
+        document.getElementById('splitDepth').src = result.urls.relative_depth || result.urls.depth_map || '';
+        document.getElementById('splitDsm').src = result.urls.dsm_preview || result.urls.depth_map || '';
+      }
+
+      // Switch to 3D continuous viewport
+      const tab3D = document.querySelector('#viewTabs [data-view="3d"]');
+      if (tab3D) tab3D.click();
+    }
+
     async function executeSelectedRect(rect) {
       try {
         const res = await fetch('/api/geo/process_selected_rect', {
@@ -955,60 +1168,7 @@
           })
         });
         const result = await res.json();
-        currentData = result;
-
-        loadTerrainGeometry(result.mesh, result.urls.texture, result.buildings);
-
-        document.getElementById('modeLabel').innerText = 'Mode 2: Georeferenced (Calibrated Metric DSM)';
-        document.getElementById('crsLabel').innerText = result.geographic_context?.projected_crs || 'EPSG:32643';
-        document.getElementById('statMin').innerText = result.statistics.min_elevation + ' m';
-        document.getElementById('statMean').innerText = result.statistics.mean_elevation + ' m';
-        document.getElementById('statMax').innerText = result.statistics.max_elevation + ' m';
-        document.getElementById('vertTag').innerText = `Vertices: ${result.mesh.vertex_count.toLocaleString()}`;
-
-        // AI Supervisor & Confidence updates
-        if (result.supervisor_decision) {
-          const sup = result.supervisor_decision;
-          const conf = sup.data_confidence || 'HIGH';
-          document.getElementById('confidenceTag').innerText = `CONFIDENCE: ${conf}`;
-          document.getElementById('inspConf').innerText = conf;
-          document.getElementById('inspComp').innerText = `${sup.terrain_complexity || 0.4} / 1.0`;
-          document.getElementById('inspLod').innerText = sup.recommended_terrain_lod || 'HIGH';
-        }
-
-        // Inspector updates
-        document.getElementById('inspLoc').innerText = result.geographic_context?.name || 'Selected Region';
-        document.getElementById('inspCrs').innerText = result.geographic_context?.projected_crs || 'EPSG:32643';
-        const dims = result.geographic_context?.dimensions_meters || { width: 1000, height: 1000 };
-        document.getElementById('inspDim').innerText = `${(dims.width / 1000).toFixed(2)} km × ${(dims.height / 1000).toFixed(2)} km`;
-        document.getElementById('inspArea').innerText = `${result.geographic_context?.approx_area_km2 || 1.0} km²`;
-        document.getElementById('inspBldgs').innerText = `${result.buildings?.length || 0} Polygons`;
-        document.getElementById('inspVerts').innerText = result.mesh.vertex_count.toLocaleString();
-
-        if (result.calibration_metrics) {
-          document.getElementById('calibMae').innerText = result.calibration_metrics.mae_meters + ' m';
-          document.getElementById('calibRmse').innerText = result.calibration_metrics.rmse_meters + ' m';
-          document.getElementById('calibR').innerText = result.calibration_metrics.pearson_r;
-          document.getElementById('calibR2').innerText = result.calibration_metrics.r2_score;
-        }
-
-        const histContainer = document.getElementById('histBars');
-        histContainer.innerHTML = '';
-        const maxCount = Math.max(...result.histogram.map(h => h.count), 1);
-        result.histogram.forEach(bin => {
-          const bar = document.createElement('div');
-          const pct = Math.max((bin.count / maxCount) * 100, 8);
-          bar.className = 'flex-1 bg-gradient-to-t from-isro-blue to-isro-sky rounded-t';
-          bar.style.height = pct + '%';
-          histContainer.appendChild(bar);
-        });
-
-        document.getElementById('btnExportTif').href = result.urls.geotiff_dsm || '#';
-        document.getElementById('btnExportObj').href = result.urls.obj_mesh;
-        document.getElementById('splitRgb').src = result.urls.texture;
-        document.getElementById('splitDepth').src = result.urls.relative_depth;
-        document.getElementById('splitDsm').src = result.urls.dsm_preview;
-
+        displayPipelineResult(result, false);
       } catch (err) {
         console.error(err);
         alert('Execution failed: ' + err.message);
@@ -1023,6 +1183,20 @@
 
       // Initial execution
       executeSelectedRect(selectedRect);
+
+      // Check backend health and reveal DEMO MODE badge if demo_mode is active
+      try {
+        const healthRes = await fetch('/api/health');
+        if (healthRes.ok) {
+          const healthData = await healthRes.json();
+          if (healthData.demo_mode) {
+            const demoBadge = document.getElementById('badgeDemoMode');
+            if (demoBadge) demoBadge.classList.remove('hidden');
+          }
+        }
+      } catch (err) {
+        console.debug('Health check skipped:', err);
+      }
 
       // Inspector Modal Toggle
       document.getElementById('btnInspectorModal').addEventListener('click', () => document.getElementById('modalInspector').classList.remove('hidden'));
@@ -1232,27 +1406,246 @@
       document.getElementById('btnImg2D3DModal').addEventListener('click', () => document.getElementById('modalImg2D3D').classList.remove('hidden'));
       document.getElementById('btnCloseImg2D3D').addEventListener('click', () => document.getElementById('modalImg2D3D').classList.add('hidden'));
 
+      // 2D Photo Upload Preview & Interactions
+      const inputPhoto2D = document.getElementById('inputPhoto2D');
+      const photo2DPreviewContainer = document.getElementById('photo2DPreviewContainer');
+      const photo2DPreviewImg = document.getElementById('photo2DPreviewImg');
+      const photo2DInfo = document.getElementById('photo2DInfo');
+      const sliderDepthStrength = document.getElementById('sliderDepthStrength');
+      const depthStrengthVal = document.getElementById('depthStrengthVal');
+
+      if (sliderDepthStrength && depthStrengthVal) {
+        sliderDepthStrength.addEventListener('input', () => {
+          depthStrengthVal.innerText = `${parseFloat(sliderDepthStrength.value).toFixed(1)}x`;
+        });
+      }
+
+      if (inputPhoto2D) {
+        inputPhoto2D.addEventListener('change', () => {
+          if (inputPhoto2D.files && inputPhoto2D.files[0]) {
+            const file = inputPhoto2D.files[0];
+            const reader = new FileReader();
+            reader.onload = (e) => {
+              photo2DPreviewImg.src = e.target.result;
+              photo2DPreviewContainer.classList.remove('hidden');
+              const img = new Image();
+              img.onload = () => {
+                photo2DInfo.innerText = `${img.width} × ${img.height} px • ${(file.size / 1024).toFixed(0)} KB`;
+              };
+              img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+          } else {
+            photo2DPreviewContainer.classList.add('hidden');
+          }
+        });
+      }
+
+      // Sample Photo Buttons
+      document.querySelectorAll('.btn-sample-photo').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const sampleType = btn.getAttribute('data-sample');
+          const samplePath = sampleType === 'drone' ? 'data/demo/drone_coastal.png' : 'data/demo/himalaya_optical.tif';
+          const depthStrength = sliderDepthStrength ? sliderDepthStrength.value : 1.5;
+          const meshResolution = document.getElementById('selectMeshRes2D').value;
+
+          const convertBtn = document.getElementById('btnConvert2DTo3D');
+          const convertText = document.getElementById('convert2DText');
+          const origHtml = convertText.innerHTML;
+          convertBtn.disabled = true;
+          convertText.innerHTML = 'Converting Sample Photo to 3D...';
+
+          try {
+            const formData = new FormData();
+            formData.append('image_path', samplePath);
+            formData.append('depth_strength', depthStrength);
+            formData.append('mesh_resolution', meshResolution);
+
+            const res = await fetch('/api/img2d3d/convert', { method: 'POST', body: formData });
+            if (!res.ok) {
+              const errData = await res.json().catch(() => ({}));
+              throw new Error(errData.detail || `Server error ${res.status}`);
+            }
+            const result = await res.json();
+            document.getElementById('modalImg2D3D').classList.add('hidden');
+            displayPipelineResult(result, true);
+          } catch (err) {
+            console.error('Sample 2D to 3D failed:', err);
+            alert('Sample conversion failed: ' + err.message);
+          } finally {
+            convertBtn.disabled = false;
+            convertText.innerHTML = origHtml;
+          }
+        });
+      });
+
+      // 2D to 3D Execution Button
       document.getElementById('btnConvert2DTo3D').addEventListener('click', async () => {
         const fileInput = document.getElementById('inputPhoto2D');
-        if (!fileInput.files || fileInput.files.length === 0) { alert('Please select a photo.'); return; }
+        if (!fileInput.files || fileInput.files.length === 0) {
+          alert('Please select a photo or click one of the curated sample photos.');
+          return;
+        }
+        const convertBtn = document.getElementById('btnConvert2DTo3D');
+        const convertText = document.getElementById('convert2DText');
+        const origText = convertText.innerText;
+        convertBtn.disabled = true;
+        convertText.innerText = 'Inferring Monocular Depth & Generating TIN Mesh...';
+
         const formData = new FormData();
         formData.append('file', fileInput.files[0]);
         formData.append('depth_strength', document.getElementById('sliderDepthStrength').value);
         formData.append('mesh_resolution', document.getElementById('selectMeshRes2D').value);
+
         try {
           const res = await fetch('/api/img2d3d/convert', { method: 'POST', body: formData });
+          if (!res.ok) {
+            const errData = await res.json().catch(() => ({}));
+            throw new Error(errData.detail || `Server error ${res.status}`);
+          }
           const result = await res.json();
           document.getElementById('modalImg2D3D').classList.add('hidden');
-          currentData = { mesh: result.mesh, urls: { texture: result.urls.texture, relative_depth: result.urls.depth_map, dsm_preview: result.urls.depth_map, obj_mesh: result.urls.obj_mesh }, buildings: [], statistics: { min_elevation: 0, mean_elevation: 0.5, max_elevation: 1 }, histogram: [] };
-          loadTerrainGeometry(result.mesh, result.urls.texture, []);
-          document.querySelector('[data-view="3d"]').click();
-        } catch (err) { alert('Conversion failed: ' + err.message); }
+          displayPipelineResult(result, true);
+        } catch (err) {
+          console.error(err);
+          alert('Conversion failed: ' + err.message);
+        } finally {
+          convertBtn.disabled = false;
+          convertText.innerText = origText;
+        }
       });
 
-      document.getElementById('btnDemoModal').addEventListener('click', () => document.getElementById('modalDemo').classList.remove('hidden'));
-      document.getElementById('btnCloseDemo').addEventListener('click', () => document.getElementById('modalDemo').classList.add('hidden'));
+      // Upload Modal & Processing Execution
       document.getElementById('btnUploadModal').addEventListener('click', () => document.getElementById('modalUpload').classList.remove('hidden'));
       document.getElementById('btnCloseUpload').addEventListener('click', () => document.getElementById('modalUpload').classList.add('hidden'));
+
+      document.getElementById('btnSubmitUpload').addEventListener('click', async () => {
+        const inputImg = document.getElementById('inputFileImage');
+        const inputDem = document.getElementById('inputFileDem');
+        if (!inputImg.files || inputImg.files.length === 0) {
+          alert('Please select an optical raster file (GeoTIFF / PNG / JPG).');
+          return;
+        }
+
+        const submitBtn = document.getElementById('btnSubmitUpload');
+        const submitText = document.getElementById('uploadSubmitText');
+        const origSubmitText = submitText.innerText;
+        submitBtn.disabled = true;
+
+        try {
+          // 1. Upload Optical Raster
+          submitText.innerText = 'Uploading optical raster...';
+          const imgFormData = new FormData();
+          imgFormData.append('file', inputImg.files[0]);
+          const upRes = await fetch('/api/upload', { method: 'POST', body: imgFormData });
+          if (!upRes.ok) throw new Error('Failed to upload optical raster');
+          const upData = await upRes.json();
+          const imagePath = upData.file_path;
+
+          // 2. Upload DEM if provided
+          let demPath = null;
+          if (inputDem.files && inputDem.files.length > 0) {
+            submitText.innerText = 'Uploading reference DEM...';
+            const demFormData = new FormData();
+            demFormData.append('file', inputDem.files[0]);
+            const demRes = await fetch('/api/upload', { method: 'POST', body: demFormData });
+            if (!demRes.ok) throw new Error('Failed to upload reference DEM');
+            const demData = await demRes.json();
+            demPath = demData.file_path;
+          }
+
+          // 3. Run Pipeline
+          submitText.innerText = 'Running 3D Reconstruction Pipeline...';
+          const meshRes = parseInt(document.getElementById('selectMeshResUpload').value);
+          const exagg = parseFloat(document.getElementById('selectExaggUpload').value);
+
+          const procRes = await fetch('/api/process', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              image_path: imagePath,
+              dem_path: demPath,
+              mesh_resolution: meshRes,
+              height_exaggeration: exagg
+            })
+          });
+          if (!procRes.ok) {
+            const errData = await procRes.json().catch(() => ({}));
+            throw new Error(errData.detail || `Server error ${procRes.status}`);
+          }
+          const procResult = await procRes.json();
+          document.getElementById('modalUpload').classList.add('hidden');
+          displayPipelineResult(procResult, false);
+        } catch (err) {
+          console.error(err);
+          alert('Pipeline execution failed: ' + err.message);
+        } finally {
+          submitBtn.disabled = false;
+          submitText.innerText = origSubmitText;
+        }
+      });
+
+      // Curated Demo Datasets Modal
+      document.getElementById('btnDemoModal').addEventListener('click', async () => {
+        document.getElementById('modalDemo').classList.remove('hidden');
+        const container = document.getElementById('demoListContainer');
+        if (container.children.length === 0) {
+          try {
+            const res = await fetch('/api/demo/datasets');
+            const data = await res.json();
+            container.innerHTML = '';
+            (data.datasets || []).forEach(ds => {
+              const card = document.createElement('div');
+              card.className = 'p-3 bg-space-950 border border-space-800 rounded-lg hover:border-sky-500/50 transition-all flex flex-col space-y-1.5';
+              card.innerHTML = `
+                <div class="flex items-center justify-between">
+                  <span class="font-bold text-xs text-white">${ds.name}</span>
+                  <span class="text-[9px] px-1.5 py-0.5 rounded bg-space-900 text-sky-400 border border-space-800 font-mono">${ds.is_georeferenced ? 'GEOREFERENCED' : 'RELATIVE'}</span>
+                </div>
+                <p class="text-[11px] text-slate-400">${ds.description}</p>
+                <button class="mt-1 self-start px-2.5 py-1 bg-isro-blue hover:bg-sky-600 text-white rounded text-[11px] font-medium transition-all flex items-center space-x-1">
+                  <i data-lucide="play" class="w-3 h-3"></i><span>Load 3D Scene</span>
+                </button>
+              `;
+              const loadBtn = card.querySelector('button');
+              loadBtn.addEventListener('click', async () => {
+                loadBtn.disabled = true;
+                loadBtn.innerHTML = 'Loading...';
+                try {
+                  const procRes = await fetch('/api/process', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      image_path: ds.image_path,
+                      dem_path: ds.dem_path || null,
+                      gcps: ds.gcps || null,
+                      mesh_resolution: 128,
+                      height_exaggeration: 1.0
+                    })
+                  });
+                  if (!procRes.ok) throw new Error('Failed to load dataset');
+                  const procResult = await procRes.json();
+                  document.getElementById('modalDemo').classList.add('hidden');
+                  displayPipelineResult(procResult, false);
+                } catch (err) {
+                  alert('Dataset load failed: ' + err.message);
+                } finally {
+                  loadBtn.disabled = false;
+                  loadBtn.innerHTML = '<span>Load 3D Scene</span>';
+                  lucide.createIcons();
+                }
+              });
+              container.appendChild(card);
+            });
+            lucide.createIcons();
+          } catch (err) {
+            container.innerHTML = '<div class="text-xs text-rose-400 p-2">Failed to load curated datasets</div>';
+          }
+        }
+      });
+      document.getElementById('btnCloseDemo').addEventListener('click', () => document.getElementById('modalDemo').classList.add('hidden'));
+
+      // Help Modal
       document.getElementById('btnHelpModal').addEventListener('click', () => document.getElementById('modalHelp').classList.remove('hidden'));
       document.getElementById('btnCloseHelp').addEventListener('click', () => document.getElementById('modalHelp').classList.add('hidden'));
 

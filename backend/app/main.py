@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 
-from backend.app.config import APP_TITLE, APP_DESCRIPTION, APP_VERSION, OUTPUTS_DIR, TEMP_DIR
+from backend.app.config import APP_TITLE, APP_DESCRIPTION, APP_VERSION, OUTPUTS_DIR, TEMP_DIR, DEMO_MODE
 from backend.app.api.routes_upload import router as upload_router
 from backend.app.api.routes_process import router as process_router
 from backend.app.api.routes_analysis import router as analysis_router
@@ -72,6 +72,7 @@ async def health_check():
         "service": "DepthWizard API",
         "version": APP_VERSION,
         "isro_problem": "SIH26175",
+        "demo_mode": DEMO_MODE,
         "local_url": "http://depthwizard.localhost:8000",
         "depth_model": model_status,
         "capabilities": {
@@ -84,6 +85,17 @@ async def health_check():
             "3d_buildings": True
         }
     }
+
+@app.on_event("startup")
+async def startup_event():
+    """Startup routine: pre-warms demo cache if DEMO_MODE is active."""
+    if DEMO_MODE:
+        logger.info("DEMO_MODE=True: Pre-warming curated demo locations to disk...")
+        try:
+            from backend.app.api.routes_demo import prewarm_demo_cache
+            prewarm_demo_cache()
+        except Exception as e:
+            logger.error("Failed to pre-warm demo cache at startup: %s", str(e))
 
 # Mount frontend static app at root
 static_dir = Path(__file__).parent / "static"

@@ -126,3 +126,68 @@ def test_api_process_selected_rect():
     assert data["geographic_context"]["dimensions_meters"]["width"] > 0
     assert data["mesh"]["vertex_count"] > 0
     assert "bounds_meters" in data["mesh"]
+
+
+def test_spatial_bounds_passthrough():
+    """
+    Regression Test F: Mesh bounds must match spatial_bounds_meters input.
+    Without this, the mesh defaults to ±50m while OSM buildings use real-world
+    meters, causing buildings to render far outside the visible terrain.
+    """
+    H, W = 64, 64
+    elev = np.random.rand(H, W).astype(np.float32) * 100 + 500
+
+    # Simulate a ~1.2km x 1.1km geographic selection
+    input_bounds = (-600.0, -550.0, 600.0, 550.0)
+
+    mesh = MeshGenerator.generate_terrain_mesh(
+        elevation_2d=elev,
+        target_grid_size=64,
+        height_exaggeration=1.0,
+        spatial_bounds_meters=input_bounds
+    )
+
+    bounds = mesh["bounds_meters"]
+
+    # X bounds (East-West) should approximately match input
+    assert abs(bounds["min_x"] - input_bounds[0]) < 1.0, (
+        f"min_x mismatch: got {bounds['min_x']}, expected ~{input_bounds[0]}"
+    )
+    assert abs(bounds["max_x"] - input_bounds[2]) < 1.0, (
+        f"max_x mismatch: got {bounds['max_x']}, expected ~{input_bounds[2]}"
+    )
+
+    # Z bounds (Three.js Z = -North-South, so min_z ~ -max_y, max_z ~ -min_y)
+    assert abs(bounds["min_z"] - (-input_bounds[3])) < 1.0, (
+        f"min_z mismatch: got {bounds['min_z']}, expected ~{-input_bounds[3]}"
+    )
+    assert abs(bounds["max_z"] - (-input_bounds[1])) < 1.0, (
+        f"max_z mismatch: got {bounds['max_z']}, expected ~{-input_bounds[1]}"
+    )
+
+    # Critical: bounds must NOT be the default ±50m
+    assert bounds["max_x"] > 100.0, (
+        f"Bounds still at default ±50m! max_x={bounds['max_x']}. "
+        f"spatial_bounds_meters not being passed through."
+    )
+
+
+def test_default_bounds_without_spatial_bounds():
+    """
+    Regression Test G: When spatial_bounds_meters is None (non-georeferenced path),
+    the mesh should use the default ±50m coordinate frame — unchanged behavior.
+    """
+    H, W = 32, 32
+    elev = np.random.rand(H, W).astype(np.float32) * 10
+
+    mesh = MeshGenerator.generate_terrain_mesh(
+        elevation_2d=elev,
+        target_grid_size=32,
+        height_exaggeration=1.0,
+        spatial_bounds_meters=None  # explicitly default
+    )
+
+    bounds = mesh["bounds_meters"]
+    assert abs(bounds["min_x"] - (-50.0)) < 0.1
+    assert abs(bounds["max_x"] - 50.0) < 0.1
+
